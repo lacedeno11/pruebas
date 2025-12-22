@@ -1,0 +1,235 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Policy Validation Copilot Application
+  # =============================================================================
+  policy-copilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://policy_user:policy_pass@postgres:5432/policy_copilot
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - OBJECT_STORAGE_ENDPOINT=minio:9000
+      - ML_MODEL_REGISTRY_URL=http://mlflow:5000
+      - PROMETHEUS_ENABLED=true
+    depends_on:
+      - postgres
+      - redis
+      - chromadb
+      - minio
+      - mlflow
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./data:/app/data
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Database Services
+  # =============================================================================
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: policy_copilot
+      POSTGRES_USER: policy_user
+      POSTGRES_PASSWORD: policy_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Vector Database (ChromaDB)
+  # =============================================================================
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - PERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Object Storage (MinIO)
+  # =============================================================================
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # ML Services
+  # =============================================================================
+  mlflow:
+    image: python:3.11-slim
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://policy_user:policy_pass@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow/artifacts
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    command: >
+      bash -c "
+        pip install mlflow psycopg2-binary boto3 &&
+        mlflow server 
+          --backend-store-uri postgresql://policy_user:policy_pass@postgres:5432/mlflow
+          --default-artifact-root s3://mlflow/artifacts
+          --host 0.0.0.0
+          --port 5000
+      "
+    depends_on:
+      - postgres
+      - minio
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Monitoring and Observability
+  # =============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Message Queue (RabbitMQ for HITL)
+  # =============================================================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: policy_user
+      RABBITMQ_DEFAULT_PASS: policy_pass
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Development Tools
+  # =============================================================================
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=policy-copilot-dev
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./src:/home/jovyan/work/src
+      - ./data:/home/jovyan/work/data
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  # =============================================================================
+  # Testing Services
+  # =============================================================================
+  test-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: policy_copilot_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+    networks:
+      - policy-copilot-network
+    restart: unless-stopped
+    profiles:
+      - test
+
+# =============================================================================
+# Networks and Volumes
+# =============================================================================
+networks:
+  policy-copilot-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+  rabbitmq_data:
+  test_db_data:
