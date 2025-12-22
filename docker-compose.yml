@@ -1,0 +1,218 @@
+version: '3.8'
+
+services:
+  # Main Policy Copilot Application
+  policy-copilot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://policy_user:policy_pass@postgres:5432/policy_copilot
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8001
+      - ML_SERVICES_BASE_URL=http://ml-services:8002
+      - GUARDRAILS_SERVICE_URL=http://guardrails:8003
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=development
+    depends_on:
+      - postgres
+      - redis
+      - chromadb
+      - ml-services
+      - guardrails
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./logs:/app/logs
+    networks:
+      - policy-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: policy_copilot
+      POSTGRES_USER: policy_user
+      POSTGRES_PASSWORD: policy_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - policy-network
+
+  # Redis for caching and queues
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - policy-network
+
+  # ChromaDB for vector storage (RAG)
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - policy-network
+
+  # ML Services (Classification, Anomaly, ETA)
+  ml-services:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml-services
+    ports:
+      - "8002:8002"
+    environment:
+      - MODEL_REGISTRY_URL=http://mlflow:5000
+      - FEATURE_STORE_URL=http://feast:6566
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./models:/app/models
+      - ml_models:/app/ml_models
+    networks:
+      - policy-network
+
+  # Guardrails Service
+  guardrails:
+    build:
+      context: .
+      dockerfile: Dockerfile.guardrails
+    ports:
+      - "8003:8003"
+    environment:
+      - RBAC_CONFIG_PATH=/app/config/rbac.yaml
+      - PII_DETECTION_MODEL=en_core_web_sm
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config/guardrails:/app/config
+    networks:
+      - policy-network
+
+  # MLflow for model registry
+  mlflow:
+    image: python:3.11-slim
+    command: >
+      bash -c "pip install mlflow psycopg2-binary &&
+               mlflow server --host 0.0.0.0 --port 5000 
+               --backend-store-uri postgresql://policy_user:policy_pass@postgres:5432/mlflow
+               --default-artifact-root /mlflow/artifacts"
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://policy_user:policy_pass@postgres:5432/mlflow
+    volumes:
+      - mlflow_data:/mlflow
+    depends_on:
+      - postgres
+    networks:
+      - policy-network
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - policy-network
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - policy-network
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - policy-network
+
+  # Celery worker for background tasks
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A policy_copilot.worker worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://policy_user:policy_pass@postgres:5432/policy_copilot
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    networks:
+      - policy-network
+
+  # Celery beat for scheduled tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A policy_copilot.worker beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://policy_user:policy_pass@postgres:5432/policy_copilot
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    networks:
+      - policy-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:
+  ml_models:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  policy-network:
+    driver: bridge
