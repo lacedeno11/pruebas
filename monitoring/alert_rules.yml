@@ -1,0 +1,220 @@
+groups:
+- name: policy-copilot-alerts
+  rules:
+  # API Health Alerts
+  - alert: PolicyCopilotAPIDown
+    expr: up{job="policy-copilot-api"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      service: api
+    annotations:
+      summary: "Policy Copilot API is down"
+      description: "Policy Copilot API has been down for more than 1 minute"
+
+  - alert: PolicyCopilotAPIHighLatency
+    expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="policy-copilot-api"}[5m])) > 2
+    for: 5m
+    labels:
+      severity: warning
+      service: api
+    annotations:
+      summary: "Policy Copilot API high latency"
+      description: "95th percentile latency is above 2 seconds for 5 minutes"
+
+  - alert: PolicyCopilotAPIHighErrorRate
+    expr: rate(http_requests_total{job="policy-copilot-api",status=~"5.."}[5m]) / rate(http_requests_total{job="policy-copilot-api"}[5m]) > 0.05
+    for: 5m
+    labels:
+      severity: warning
+      service: api
+    annotations:
+      summary: "Policy Copilot API high error rate"
+      description: "Error rate is above 5% for 5 minutes"
+
+  # Worker Health Alerts
+  - alert: PolicyCopilotWorkerDown
+    expr: up{job="policy-copilot-worker"} == 0
+    for: 2m
+    labels:
+      severity: warning
+      service: worker
+    annotations:
+      summary: "Policy Copilot Worker is down"
+      description: "Policy Copilot Worker has been down for more than 2 minutes"
+
+  - alert: PolicyCopilotQueueBacklog
+    expr: policy_copilot_queue_pending_tasks > 100
+    for: 10m
+    labels:
+      severity: warning
+      service: worker
+    annotations:
+      summary: "Policy Copilot queue backlog"
+      description: "Queue has more than 100 pending tasks for 10 minutes"
+
+  # Database Alerts
+  - alert: PostgreSQLDown
+    expr: up{job="postgresql"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      service: database
+    annotations:
+      summary: "PostgreSQL is down"
+      description: "PostgreSQL database has been down for more than 1 minute"
+
+  - alert: PostgreSQLHighConnections
+    expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+    for: 5m
+    labels:
+      severity: warning
+      service: database
+    annotations:
+      summary: "PostgreSQL high connection usage"
+      description: "PostgreSQL connection usage is above 80% for 5 minutes"
+
+  - alert: PostgreSQLSlowQueries
+    expr: rate(pg_stat_database_tup_returned[5m]) / rate(pg_stat_database_tup_fetched[5m]) < 0.1
+    for: 10m
+    labels:
+      severity: warning
+      service: database
+    annotations:
+      summary: "PostgreSQL slow queries detected"
+      description: "Query efficiency is below 10% for 10 minutes"
+
+  # Redis Alerts
+  - alert: RedisDown
+    expr: up{job="redis"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      service: cache
+    annotations:
+      summary: "Redis is down"
+      description: "Redis cache has been down for more than 1 minute"
+
+  - alert: RedisHighMemoryUsage
+    expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+    for: 5m
+    labels:
+      severity: warning
+      service: cache
+    annotations:
+      summary: "Redis high memory usage"
+      description: "Redis memory usage is above 90% for 5 minutes"
+
+  - alert: RedisLowHitRate
+    expr: rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.5
+    for: 10m
+    labels:
+      severity: warning
+      service: cache
+    annotations:
+      summary: "Redis low hit rate"
+      description: "Redis hit rate is below 50% for 10 minutes"
+
+  # ML Services Alerts
+  - alert: MLServiceDown
+    expr: up{job="policy-copilot-ml"} == 0
+    for: 2m
+    labels:
+      severity: warning
+      service: ml
+    annotations:
+      summary: "ML Service is down"
+      description: "ML Service has been down for more than 2 minutes"
+
+  - alert: MLServiceHighLatency
+    expr: histogram_quantile(0.95, rate(ml_prediction_duration_seconds_bucket[5m])) > 10
+    for: 5m
+    labels:
+      severity: warning
+      service: ml
+    annotations:
+      summary: "ML Service high latency"
+      description: "ML prediction latency is above 10 seconds for 5 minutes"
+
+  # System Resource Alerts
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+      service: system
+    annotations:
+      summary: "High CPU usage"
+      description: "CPU usage is above 80% for 5 minutes on {{ $labels.instance }}"
+
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+      service: system
+    annotations:
+      summary: "High memory usage"
+      description: "Memory usage is above 85% for 5 minutes on {{ $labels.instance }}"
+
+  - alert: HighDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+      service: system
+    annotations:
+      summary: "High disk usage"
+      description: "Disk usage is above 90% for 5 minutes on {{ $labels.instance }}"
+
+  # Business Logic Alerts
+  - alert: HighCaseProcessingTime
+    expr: histogram_quantile(0.95, rate(policy_copilot_case_processing_duration_seconds_bucket[10m])) > 3600
+    for: 10m
+    labels:
+      severity: warning
+      service: business
+    annotations:
+      summary: "High case processing time"
+      description: "95th percentile case processing time is above 1 hour for 10 minutes"
+
+  - alert: HighHITLEscalationRate
+    expr: rate(policy_copilot_hitl_escalations_total[10m]) / rate(policy_copilot_cases_total[10m]) > 0.3
+    for: 15m
+    labels:
+      severity: warning
+      service: business
+    annotations:
+      summary: "High HITL escalation rate"
+      description: "HITL escalation rate is above 30% for 15 minutes"
+
+  - alert: LowAutoClosureRate
+    expr: rate(policy_copilot_auto_closures_total[10m]) / rate(policy_copilot_cases_total[10m]) < 0.5
+    for: 15m
+    labels:
+      severity: warning
+      service: business
+    annotations:
+      summary: "Low auto-closure rate"
+      description: "Auto-closure rate is below 50% for 15 minutes"
+
+  # Security Alerts
+  - alert: HighSecurityViolations
+    expr: rate(policy_copilot_security_violations_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: critical
+      service: security
+    annotations:
+      summary: "High security violations"
+      description: "Security violation rate is above 0.1 per second for 5 minutes"
+
+  - alert: FailedAuthenticationAttempts
+    expr: rate(policy_copilot_auth_failures_total[5m]) > 1
+    for: 5m
+    labels:
+      severity: warning
+      service: security
+    annotations:
+      summary: "High authentication failure rate"
+      description: "Authentication failure rate is above 1 per second for 5 minutes"
