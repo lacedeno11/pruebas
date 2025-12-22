@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-copilot-config
+  namespace: policy-copilot
+  labels:
+    app.kubernetes.io/name: policy-copilot
+    app.kubernetes.io/component: config
+data:
+  APP_ENVIRONMENT: "production"
+  APP_LOG_LEVEL: "INFO"
+  APP_LOG_FORMAT: "json"
+  APP_HOST: "0.0.0.0"
+  APP_PORT: "8000"
+  APP_API_PREFIX: "/api/v1"
+  
+  # Database settings
+  DB_HOST: "postgresql"
+  DB_PORT: "5432"
+  DB_NAME: "policy_copilot"
+  DB_POOL_SIZE: "10"
+  DB_MAX_OVERFLOW: "20"
+  DB_POOL_TIMEOUT: "30"
+  DB_SSL_MODE: "require"
+  
+  # Redis settings
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  REDIS_DATABASE: "0"
+  REDIS_MAX_CONNECTIONS: "20"
+  
+  # ML Services settings
+  ML_USE_MOCK_SERVICES: "false"
+  ML_MAX_RETRIES: "3"
+  ML_RETRY_DELAY: "5"
+  
+  # Storage settings
+  STORAGE_BACKEND: "s3"
+  STORAGE_S3_REGION: "us-east-1"
+  STORAGE_ENCRYPTION_ENABLED: "true"
+  STORAGE_VERSIONING_ENABLED: "true"
+  STORAGE_RETENTION_DAYS: "2555"
+  
+  # Vector DB settings
+  VECTORDB_BACKEND: "chromadb"
+  VECTORDB_CHROMADB_HOST: "chromadb"
+  VECTORDB_CHROMADB_PORT: "8000"
+  VECTORDB_CHROMADB_COLLECTION: "policy_documents"
+  
+  # Workflow settings
+  WORKFLOW_CHECKPOINT_ENABLED: "true"
+  WORKFLOW_HITL_ENABLED: "true"
+  WORKFLOW_AUTO_CLOSURE_ENABLED: "true"
+  WORKFLOW_EXTERNAL_QUERIES_ENABLED: "true"
+  WORKFLOW_CONFIDENCE_THRESHOLD: "0.8"
+  WORKFLOW_RISK_THRESHOLD: "0.3"
+  
+  # Security settings
+  SECURITY_JWT_ALGORITHM: "HS256"
+  SECURITY_JWT_EXPIRATION_HOURS: "24"
+  SECURITY_RATE_LIMIT_REQUESTS: "100"
+  SECURITY_RATE_LIMIT_WINDOW: "60"
+  SECURITY_CORS_ORIGINS: '["https://policy-copilot.example.com"]'
+  
+  # Monitoring settings
+  MONITORING_PROMETHEUS_ENABLED: "true"
+  MONITORING_PROMETHEUS_PORT: "8000"
+  MONITORING_PROMETHEUS_PATH: "/metrics"
+  MONITORING_HEALTH_CHECK_INTERVAL: "30"
+  MONITORING_HEALTH_CHECK_TIMEOUT: "10"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-copilot-nginx-config
+  namespace: policy-copilot
+  labels:
+    app.kubernetes.io/name: policy-copilot
+    app.kubernetes.io/component: nginx-config
+data:
+  nginx.conf: |
+    upstream api_backend {
+        server policy-copilot-api:8000;
+    }
+    
+    upstream ml_backend {
+        server policy-copilot-ml:8001;
+    }
+    
+    server {
+        listen 80;
+        server_name _;
+        
+        # Security headers
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+        
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+        limit_req_zone $binary_remote_addr zone=ml:10m rate=5r/s;
+        
+        # API endpoints
+        location /api/ {
+            limit_req zone=api burst=20 nodelay;
+            proxy_pass http://api_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_timeout 60s;
+        }
+        
+        # ML services endpoints
+        location /ml/ {
+            limit_req zone=ml burst=10 nodelay;
+            proxy_pass http://ml_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_timeout 120s;
+        }
+        
+        # Health check
+        location /health {
+            proxy_pass http://api_backend/health;
+            access_log off;
+        }
+        
+        # Metrics endpoint
+        location /metrics {
+            proxy_pass http://api_backend/metrics;
+            allow 10.0.0.0/8;
+            allow 172.16.0.0/12;
+            allow 192.168.0.0/16;
+            deny all;
+        }
+        
+        # Static files (if any)
+        location /static/ {
+            alias /app/static/;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
