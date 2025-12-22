@@ -8,4 +8,22 @@ This module contains intelligent agents for:
 - External insurer consultation (UC-OP-09)
 """
 
-__all__ = []
+from .policy_retrieval import (
+    PolicyRetrievalAgent,
+    SemanticQuery,
+    RetrievalResult,
+    CoverageAnalysis,
+    ConflictAnalysis,
+    create_policy_retrieval_agent,
+)
+
+__all__ = [
+    # Policy Retrieval Agent (UC-OP-06)
+    "PolicyRetrievalAgent",
+    "SemanticQuery",
+    "RetrievalResult",
+    "CoverageAnalysis",
+    "ConflictAnalysis",
+    "create_policy_retrieval_agent",
+]
+
