@@ -17,6 +17,20 @@ from .policy_retrieval import (
     create_policy_retrieval_agent,
 )
 
+from .rules_builder import (
+    RulesAndChecklistBuilderAgent,
+    PolicyRule,
+    RuleCondition,
+    RuleEvaluationResult,
+    EvidenceParser,
+    RuleEngine,
+    ChecklistBuilder,
+    RuleType,
+    RuleOperator,
+    create_rules_and_checklist_agent,
+    create_sample_rules,
+)
+
 __all__ = [
     # Policy Retrieval Agent (UC-OP-06)
     "PolicyRetrievalAgent",
@@ -25,5 +39,19 @@ __all__ = [
     "CoverageAnalysis",
     "ConflictAnalysis",
     "create_policy_retrieval_agent",
+    
+    # Rules and Checklist Builder Agent (UC-OP-07)
+    "RulesAndChecklistBuilderAgent",
+    "PolicyRule",
+    "RuleCondition",
+    "RuleEvaluationResult",
+    "EvidenceParser",
+    "RuleEngine",
+    "ChecklistBuilder",
+    "RuleType",
+    "RuleOperator",
+    "create_rules_and_checklist_agent",
+    "create_sample_rules",
 ]
+
 
