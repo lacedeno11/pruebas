@@ -1,0 +1,37 @@
+# Development dependencies
+# Install with: pip install -r requirements.txt
+
+# Core dependencies are defined in pyproject.toml
+# This file is for development and CI/CD environments
+
+# Development tools
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-cov>=5.0.0
+pytest-mock>=3.14.0
+factory-boy>=3.3.0
+faker>=28.4.0
+
+# Code quality
+black>=24.8.0
+isort>=5.13.0
+flake8>=7.1.0
+mypy>=1.11.0
+pre-commit>=3.8.0
+
+# Documentation
+mkdocs>=1.6.0
+mkdocs-material>=9.5.0
+mkdocstrings[python]>=0.25.0
+
+# Additional development utilities
+ipython>=8.26.0
+jupyter>=1.0.0
+notebook>=7.2.0
+
+# Load testing and performance
+locust>=2.31.0
+
+# Security scanning
+bandit>=1.7.9
+safety>=3.2.0

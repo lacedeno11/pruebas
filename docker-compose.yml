@@ -1,0 +1,376 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # APPLICATION SERVICES
+  # =============================================================================
+  
+  # Policy Validation Copilot API
+  policy-copilot-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: policy-copilot-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://policy_user:policy_pass@postgres:5432/policy_validation
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      - postgres
+      - redis
+      - chromadb
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - policy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # DATABASE SERVICES
+  # =============================================================================
+  
+  # PostgreSQL Primary Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: policy-postgres
+    environment:
+      POSTGRES_DB: policy_validation
+      POSTGRES_USER: policy_user
+      POSTGRES_PASSWORD: policy_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - policy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U policy_user -d policy_validation"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Test Database
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: policy-postgres-test
+    environment:
+      POSTGRES_DB: test_policy_validation
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - testing
+
+  # Redis for Caching and Background Tasks
+  redis:
+    image: redis:7-alpine
+    container_name: policy-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - policy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # =============================================================================
+  # VECTOR DATABASE & KNOWLEDGE BASE
+  # =============================================================================
+  
+  # ChromaDB for Vector Storage
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: policy-chromadb
+    ports:
+      - "8001:8000"
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - PERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - chromadb_data:/chroma/chroma
+    networks:
+      - policy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # OBJECT STORAGE
+  # =============================================================================
+  
+  # MinIO S3-compatible Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: policy-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - policy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # ML SERVICES (MOCK IMPLEMENTATIONS)
+  # =============================================================================
+  
+  # ML Classification Service
+  ml-classify:
+    build:
+      context: ./services/ml-classify
+      dockerfile: Dockerfile
+    container_name: policy-ml-classify
+    ports:
+      - "8002:8000"
+    environment:
+      - MODEL_VERSION=1.0.0
+      - LOG_LEVEL=INFO
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - ml-services
+
+  # ML Anomaly Detection Service
+  ml-anomaly:
+    build:
+      context: ./services/ml-anomaly
+      dockerfile: Dockerfile
+    container_name: policy-ml-anomaly
+    ports:
+      - "8003:8000"
+    environment:
+      - MODEL_VERSION=1.0.0
+      - LOG_LEVEL=INFO
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - ml-services
+
+  # ML ETA Prediction Service
+  ml-eta:
+    build:
+      context: ./services/ml-eta
+      dockerfile: Dockerfile
+    container_name: policy-ml-eta
+    ports:
+      - "8004:8000"
+    environment:
+      - MODEL_VERSION=1.0.0
+      - LOG_LEVEL=INFO
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - ml-services
+
+  # =============================================================================
+  # MONITORING & OBSERVABILITY
+  # =============================================================================
+  
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: policy-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Grafana for Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: policy-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # =============================================================================
+  # BACKGROUND TASK PROCESSING
+  # =============================================================================
+  
+  # Celery Worker for Background Tasks
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: policy-celery-worker
+    command: celery -A policy_validation_copilot.tasks worker --loglevel=info
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://policy_user:policy_pass@postgres:5432/policy_validation
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - background-tasks
+
+  # Celery Beat for Scheduled Tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: policy-celery-beat
+    command: celery -A policy_validation_copilot.tasks beat --loglevel=info
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://policy_user:policy_pass@postgres:5432/policy_validation
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - background-tasks
+
+  # =============================================================================
+  # DEVELOPMENT TOOLS
+  # =============================================================================
+  
+  # Jupyter Notebook for Development and Analysis
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile.jupyter
+    container_name: policy-jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - DATABASE_URL=postgresql+asyncpg://policy_user:policy_pass@postgres:5432/policy_validation
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./src:/app/src
+      - ./data:/app/data
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - development
+
+  # pgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: policy-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@policy.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - policy-network
+    restart: unless-stopped
+    profiles:
+      - development
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  policy-network:
+    driver: bridge
+    name: policy-validation-network
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  postgres_data:
+    name: policy-postgres-data
+  postgres_test_data:
+    name: policy-postgres-test-data
+  redis_data:
+    name: policy-redis-data
+  chromadb_data:
+    name: policy-chromadb-data
+  minio_data:
+    name: policy-minio-data
+  prometheus_data:
+    name: policy-prometheus-data
+  grafana_data:
+    name: policy-grafana-data
+  pgadmin_data:
+    name: policy-pgadmin-data
