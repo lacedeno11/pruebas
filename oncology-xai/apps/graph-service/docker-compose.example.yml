@@ -1,0 +1,47 @@
+# Example docker-compose configuration for graph-service
+# Add this to the main docker-compose.yml in the root
+
+services:
+  graph-service:
+    build:
+      context: ../..
+      dockerfile: apps/graph-service/Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - POSTGRES_DSN=postgresql+asyncpg://oncology:oncology_secret@postgres:5432/oncology_xai
+      - REDIS_URL=redis://redis:6379/0
+      - FUSEKI_URL=http://fuseki:3030
+      - FUSEKI_DATASET=oncology
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    depends_on:
+      - postgres
+      - redis
+      - fuseki
+    networks:
+      - oncology-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  graph-worker:
+    build:
+      context: ../..
+      dockerfile: apps/graph-service/Dockerfile.worker
+    environment:
+      - POSTGRES_DSN=postgresql+asyncpg://oncology:oncology_secret@postgres:5432/oncology_xai
+      - REDIS_URL=redis://redis:6379/0
+      - FUSEKI_URL=http://fuseki:3030
+      - FUSEKI_DATASET=oncology
+    depends_on:
+      - postgres
+      - redis
+      - fuseki
+    networks:
+      - oncology-network
+
+networks:
+  oncology-network:
+    external: true

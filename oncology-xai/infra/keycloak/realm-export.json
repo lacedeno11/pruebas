@@ -1,0 +1,288 @@
+{
+  "id": "oncology",
+  "realm": "oncology",
+  "displayName": "Oncology XAI",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "roles": {
+    "realm": [
+      {
+        "name": "clinician",
+        "description": "Clinical user (oncologist/pathologist)"
+      },
+      {
+        "name": "admin",
+        "description": "System administrator"
+      },
+      {
+        "name": "auditor",
+        "description": "Audit log viewer"
+      }
+    ],
+    "client": {
+      "oncology-api": [
+        {
+          "name": "read:patients",
+          "description": "Read patient data"
+        },
+        {
+          "name": "write:patients",
+          "description": "Write patient data"
+        },
+        {
+          "name": "read:cases",
+          "description": "Read case data"
+        },
+        {
+          "name": "write:cases",
+          "description": "Write case data"
+        },
+        {
+          "name": "read:images",
+          "description": "Read images"
+        },
+        {
+          "name": "write:images",
+          "description": "Upload images"
+        },
+        {
+          "name": "process:images",
+          "description": "Process images with ML"
+        },
+        {
+          "name": "read:ehr",
+          "description": "Read EHR data"
+        },
+        {
+          "name": "write:ehr",
+          "description": "Write EHR data"
+        },
+        {
+          "name": "read:graph",
+          "description": "Read ontology graphs"
+        },
+        {
+          "name": "admin:ontologies",
+          "description": "Manage ontologies"
+        },
+        {
+          "name": "read:audit",
+          "description": "Read audit logs"
+        }
+      ]
+    }
+  },
+  "groups": [
+    {
+      "name": "clinicians",
+      "realmRoles": ["clinician"]
+    },
+    {
+      "name": "administrators",
+      "realmRoles": ["admin", "auditor"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "oncology-api",
+      "name": "Oncology API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "oncology-secret",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "bearerOnly": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "client-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_roles",
+            "jsonType.label": "String",
+            "usermodel.clientRoleMapping.clientId": "oncology-api"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "oncology-webapp",
+      "name": "Oncology WebApp",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ],
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "clinician",
+      "email": "clinician@oncology.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "Clinician",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "clinician123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["clinician"],
+      "clientRoles": {
+        "oncology-api": [
+          "read:patients",
+          "write:patients",
+          "read:cases",
+          "write:cases",
+          "read:images",
+          "write:images",
+          "process:images",
+          "read:ehr",
+          "write:ehr",
+          "read:graph"
+        ]
+      }
+    },
+    {
+      "username": "admin",
+      "email": "admin@oncology.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "auditor", "clinician"],
+      "clientRoles": {
+        "oncology-api": [
+          "read:patients",
+          "write:patients",
+          "read:cases",
+          "write:cases",
+          "read:images",
+          "write:images",
+          "process:images",
+          "read:ehr",
+          "write:ehr",
+          "read:graph",
+          "admin:ontologies",
+          "read:audit"
+        ]
+      }
+    },
+    {
+      "username": "auditor",
+      "email": "auditor@oncology.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "Auditor",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "auditor123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["auditor"],
+      "clientRoles": {
+        "oncology-api": [
+          "read:patients",
+          "read:cases",
+          "read:images",
+          "read:ehr",
+          "read:graph",
+          "read:audit"
+        ]
+      }
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "role_list",
+    "profile",
+    "email",
+    "roles",
+    "web-origins",
+    "acr"
+  ],
+  "defaultOptionalClientScopes": [
+    "offline_access",
+    "address",
+    "phone",
+    "microprofile-jwt"
+  ]
+}

@@ -1,0 +1,55 @@
+# Example docker-compose configuration for Ontology Admin Service
+# This can be included in the main docker-compose.yml
+
+version: '3.8'
+
+services:
+  ontology-admin-service:
+    build:
+      context: ../../
+      dockerfile: apps/ontology-admin-service/Dockerfile
+    ports:
+      - "8006:8006"
+    environment:
+      - POSTGRES_DSN=postgresql+asyncpg://oncology:oncology_secret@postgres:5432/oncology_xai
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REASONER_BACKEND=mock
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    networks:
+      - oncology-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ontology-admin-worker:
+    build:
+      context: ../../
+      dockerfile: apps/ontology-admin-service/Dockerfile.celery
+    environment:
+      - POSTGRES_DSN=postgresql+asyncpg://oncology:oncology_secret@postgres:5432/oncology_xai
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REASONER_BACKEND=mock
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    networks:
+      - oncology-network
+
+networks:
+  oncology-network:
+    external: true

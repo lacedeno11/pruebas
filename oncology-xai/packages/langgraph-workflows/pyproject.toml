@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oncology-langgraph-workflows"
+version = "0.1.0"
+description = "LangGraph workflows for Oncology XAI"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=0.0.40",
+    "langchain-core>=0.1.0",
+    "pydantic>=2.5.0",
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+openai = ["langchain-openai>=0.0.5"]
+anthropic = ["langchain-anthropic>=0.1.0"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langgraph_workflows"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
