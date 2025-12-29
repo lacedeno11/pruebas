@@ -1,0 +1,240 @@
+openapi: 3.1.0
+info:
+  title: Oncology XAI Inference Service
+  description: ML inference service for pattern and mutation predictions
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8003
+    description: Local development server
+
+paths:
+  /healthz:
+    get:
+      summary: Health check endpoint
+      operationId: healthCheck
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/jobs:
+    post:
+      summary: Create a new inference job
+      operationId: createJob
+      tags: [Jobs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InferenceJob'
+        '400':
+          description: Invalid request
+
+  /api/v1/jobs/{job_id}:
+    get:
+      summary: Get job by ID
+      operationId: getJob
+      tags: [Jobs]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InferenceJob'
+        '404':
+          description: Job not found
+
+  /api/v1/jobs/{job_id}/results:
+    get:
+      summary: Get job results
+      operationId: getJobResults
+      tags: [Jobs]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InferenceResults'
+        '404':
+          description: Job not found
+
+  /api/v1/cases/{case_id}/jobs:
+    get:
+      summary: List jobs for a case
+      operationId: listCaseJobs
+      tags: [Jobs]
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InferenceJob'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, version]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        version:
+          type: string
+
+    JobCreate:
+      type: object
+      required: [case_id, image_id]
+      properties:
+        case_id:
+          type: string
+          format: uuid
+        image_id:
+          type: string
+          format: uuid
+
+    InferenceJob:
+      type: object
+      required: [job_id, case_id, image_id, status]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        image_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+
+    JobStatus:
+      type: string
+      enum: [pending, running, completed, failed]
+
+    InferenceResults:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        pattern_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatternResult'
+        mutation_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MutationResult'
+        xai_artifacts:
+          $ref: '#/components/schemas/XAIArtifacts'
+
+    PatternResult:
+      type: object
+      required: [pattern_type, confidence, area_percentage]
+      properties:
+        pattern_type:
+          $ref: '#/components/schemas/PatternType'
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        area_percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+
+    MutationResult:
+      type: object
+      required: [mutation_type, probability]
+      properties:
+        mutation_type:
+          $ref: '#/components/schemas/MutationType'
+        probability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        variant:
+          type: string
+          nullable: true
+
+    PatternType:
+      type: string
+      enum: [lepidic, acinar, papillary, micropapillary, solid]
+
+    MutationType:
+      type: string
+      enum: [EGFR, KRAS, TP53]
+
+    XAIArtifacts:
+      type: object
+      properties:
+        heatmap_uri:
+          type: string
+          format: uri
+        gradcam_uri:
+          type: string
+          format: uri
+          nullable: true
+        attention_map_uri:
+          type: string
+          format: uri
+          nullable: true

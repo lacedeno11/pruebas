@@ -1,0 +1,201 @@
+openapi: 3.1.0
+info:
+  title: Oncology XAI Image Service
+  description: Image upload and storage service for histopathological images
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8002
+    description: Local development server
+
+paths:
+  /healthz:
+    get:
+      summary: Health check endpoint
+      operationId: healthCheck
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/cases/{case_id}/images:upload:
+    post:
+      summary: Upload an image for a case
+      operationId: uploadImage
+      tags: [Images]
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                stain:
+                  type: string
+                magnification:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+        '400':
+          description: Invalid file format
+
+  /api/v1/cases/{case_id}/images:
+    get:
+      summary: List images for a case
+      operationId: listCaseImages
+      tags: [Images]
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Image'
+
+  /api/v1/images/{image_id}:
+    get:
+      summary: Get image by ID
+      operationId: getImage
+      tags: [Images]
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Image details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+        '404':
+          description: Image not found
+    delete:
+      summary: Delete an image
+      operationId: deleteImage
+      tags: [Images]
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Image deleted
+        '404':
+          description: Image not found
+
+  /api/v1/images/{image_id}/viewer-url:
+    get:
+      summary: Get signed URL for image viewing
+      operationId: getViewerUrl
+      tags: [Images]
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Viewer URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  viewer_url:
+                    type: string
+                    format: uri
+                  expires_in:
+                    type: integer
+                    description: Expiration time in seconds
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, version]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        version:
+          type: string
+
+    Image:
+      type: object
+      required: [image_id, case_id, format, storage_uri, checksum, size_bytes]
+      properties:
+        image_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        format:
+          $ref: '#/components/schemas/ImageFormat'
+        storage_uri:
+          type: string
+        checksum:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        stain:
+          type: string
+          nullable: true
+        magnification:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        uploaded_by:
+          type: string
+          nullable: true
+        uploaded_at:
+          type: string
+          format: date-time
+
+    ImageFormat:
+      type: string
+      enum: [png, biff]

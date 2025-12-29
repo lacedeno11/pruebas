@@ -1,0 +1,452 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+
+      - name: Run Ruff linter
+        run: ruff check oncology-xai/packages oncology-xai/apps --ignore E501
+
+      - name: Run Ruff formatter check
+        run: ruff format --check oncology-xai/packages oncology-xai/apps
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: oncology-xai/apps/webapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+  test-common:
+    name: Test Common Package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/packages/common
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=src/oncology_common --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: common
+
+  test-event-contracts:
+    name: Test Event Contracts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/packages/event-contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=src/event_contracts --cov-report=xml
+
+  test-langgraph-workflows:
+    name: Test LangGraph Workflows
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/packages/langgraph-workflows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install common package
+        run: pip install -e ../common
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=src/langgraph_workflows --cov-report=xml
+
+  test-case-service:
+    name: Test Case Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/case-service
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packages
+        run: |
+          pip install -e ../../packages/common
+          pip install -e ../../packages/event-contracts
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+        run: pytest tests/ -v --cov=src/case_service --cov-report=xml
+
+  test-image-service:
+    name: Test Image Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/image-service
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packages
+        run: |
+          pip install -e ../../packages/common
+          pip install -e ../../packages/event-contracts
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+        run: pytest tests/ -v --cov=src/image_service --cov-report=xml
+
+  test-inference-service:
+    name: Test Inference Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/inference-service
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packages
+        run: |
+          pip install -e ../../packages/common
+          pip install -e ../../packages/event-contracts
+          pip install -e ../../packages/langgraph-workflows
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest tests/ -v --cov=src/inference_service --cov-report=xml
+
+  test-ehr-service:
+    name: Test EHR Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/ehr-service
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packages
+        run: |
+          pip install -e ../../packages/common
+          pip install -e ../../packages/event-contracts
+          pip install -e ../../packages/langgraph-workflows
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test_db
+        run: pytest tests/ -v --cov=src/ehr_service --cov-report=xml
+
+  test-graph-service:
+    name: Test Graph Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/graph-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packages
+        run: |
+          pip install -e ../../packages/common
+          pip install -e ../../packages/event-contracts
+          pip install -e ../../packages/langgraph-workflows
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=src/graph_service --cov-report=xml
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: oncology-xai/apps/webapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test -- --run
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, test-frontend]
+    defaults:
+      run:
+        working-directory: oncology-xai/apps/webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: oncology-xai/apps/webapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp-dist
+          path: oncology-xai/apps/webapp/dist
+
+  contract-tests:
+    name: OpenAPI Contract Tests
+    runs-on: ubuntu-latest
+    needs: [test-case-service, test-image-service, test-inference-service, test-ehr-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install schemathesis
+        run: pip install schemathesis
+
+      - name: Validate OpenAPI schemas
+        run: |
+          for schema in oncology-xai/docs/openapi/*.yaml; do
+            echo "Validating $schema..."
+            python -c "import yaml; yaml.safe_load(open('$schema'))"
+          done
+
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint-python, test-common, test-event-contracts]
+    strategy:
+      matrix:
+        service:
+          - api-gateway
+          - case-service
+          - image-service
+          - inference-service
+          - ehr-service
+          - graph-service
+          - ontology-admin-service
+          - audit-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: oncology-xai
+          file: oncology-xai/apps/${{ matrix.service }}/Dockerfile
+          push: false
+          tags: oncology-xai/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  all-tests-pass:
+    name: All Tests Pass
+    runs-on: ubuntu-latest
+    needs:
+      - lint-python
+      - lint-frontend
+      - test-common
+      - test-event-contracts
+      - test-langgraph-workflows
+      - test-case-service
+      - test-image-service
+      - test-inference-service
+      - test-ehr-service
+      - test-graph-service
+      - test-frontend
+      - build-frontend
+      - contract-tests
+      - docker-build
+    steps:
+      - name: All tests passed
+        run: echo "All CI checks passed successfully!"

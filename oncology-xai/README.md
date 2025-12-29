@@ -1,62 +1,72 @@
 # DERCAS-ONCO-XAI V1
 
-Explainable AI Application for Oncology (Lung Cancer) with:
-- Histopathological image processing and visualization (.png, .biff)
-- ML-based pattern segmentation (lepidic, acinar, papillary, micropapillary, solid)
-- Mutation prediction (EGFR, KRAS, TP53)
-- EHR text panel with entity extraction and ontology mapping (NCIt/MONDO/SO)
-- Integrated ontology graph visualization with provenance
-- Admin module for ontology updates via LangGraph
-- End-to-end audit and explainable reports with clinical guardrails
+**Explainable AI System for Oncology Pathology (Lung Cancer)**
 
-## Quickstart
+A comprehensive microservices-based platform for analyzing histopathological images, extracting clinical entities from EHR data, mapping to biomedical ontologies, and generating explainable AI reports with clinical guardrails.
+
+## Features
+
+- **Image Analysis**: Upload and analyze histopathological images (.png, .biff) for 5 adenocarcinoma patterns (lepidic, acinar, papillary, micropapillary, solid) and 3 mutation predictions (EGFR, KRAS, TP53)
+- **EHR Processing**: Entity extraction and normalization from clinical text with LLM-powered NER
+- **Ontology Mapping**: Automatic mapping to NCIt, MONDO, SO, HGNC, and RxNorm ontologies
+- **Knowledge Graph**: SPARQL-queryable triple store with provenance tracking
+- **XAI Artifacts**: GradCAM heatmaps and attention maps for model interpretability
+- **Clinical Guardrails**: Automated validation preventing definitive diagnostic language
+- **Audit Trail**: Complete event logging for compliance and reproducibility
+
+## Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose v2+
-- Python 3.12+
+- Docker & Docker Compose v2.20+
+- Python 3.11+
 - Node.js 20+ (for webapp)
-- Make
 
-### Setup
+### Running Locally
 
-1. Clone and configure environment:
 ```bash
-cp .env.example .env
-# Edit .env with your settings (defaults work for local development)
+# Navigate to infrastructure directory
+cd infra
+
+# Start all services
+docker compose up -d
+
+# Wait for services to be ready (~60s for Keycloak)
+docker compose logs -f keycloak
+
+# Access the application
+open http://localhost:3000
 ```
 
-2. Start infrastructure:
-```bash
-make up
-```
+### Default Credentials
 
-3. Wait for services to be healthy:
-```bash
-make logs
-```
-
-4. Access services:
-- API Gateway: http://localhost:8000
-- Webapp: http://localhost:3000
-- Keycloak Admin: http://localhost:8080 (admin/admin)
-- MinIO Console: http://localhost:9001 (minioadmin/minioadmin)
-- Fuseki SPARQL: http://localhost:3030
-- Jaeger UI: http://localhost:16686
-- Prometheus: http://localhost:9090
-- RabbitMQ Management: http://localhost:15672 (guest/guest)
+| Service | URL | Username | Password |
+|---------|-----|----------|----------|
+| WebApp | http://localhost:3000 | clinician | clinician123 |
+| Keycloak Admin | http://localhost:8080 | admin | admin |
+| MinIO Console | http://localhost:9001 | minioadmin | minioadmin |
+| Fuseki SPARQL | http://localhost:3030 | admin | fuseki_secret |
+| RabbitMQ | http://localhost:15672 | guest | guest |
+| Jaeger UI | http://localhost:16686 | - | - |
+| Prometheus | http://localhost:9090 | - | - |
 
 ### Development
 
 ```bash
-# Run all tests
-make test
+# Run Python tests
+cd packages/common && pytest tests/ -v
+cd apps/case-service && pytest tests/ -v
 
-# Lint and format
-make lint
-make fmt
+# Run frontend tests
+cd apps/webapp && npm test
+
+# Lint Python code
+ruff check packages apps
+
+# Lint frontend
+cd apps/webapp && npm run lint
 
 # Stop all services
-make down
+cd infra && docker compose down
 ```
 
 ## Architecture

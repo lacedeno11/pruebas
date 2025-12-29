@@ -1,0 +1,251 @@
+openapi: 3.1.0
+info:
+  title: Oncology XAI Graph Service
+  description: Knowledge graph service with SPARQL endpoint
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8005
+    description: Local development server
+
+paths:
+  /healthz:
+    get:
+      summary: Health check endpoint
+      operationId: healthCheck
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/cases/{case_id}/graph:
+    get:
+      summary: Get knowledge graph for a case
+      operationId: getCaseGraph
+      tags: [Graph]
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: depth
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 2
+            minimum: 1
+            maximum: 5
+      responses:
+        '200':
+          description: Case knowledge graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphData'
+
+  /api/v1/sparql:
+    post:
+      summary: Execute SPARQL query
+      operationId: executeSparql
+      tags: [SPARQL]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SparqlQuery'
+      responses:
+        '200':
+          description: Query results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SparqlResults'
+        '400':
+          description: Invalid query
+
+  /api/v1/triples:
+    post:
+      summary: Add triples to the graph
+      operationId: addTriples
+      tags: [Graph]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [triples]
+              properties:
+                triples:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Triple'
+                case_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Triples added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  added_count:
+                    type: integer
+
+  /api/v1/ontologies:
+    get:
+      summary: List available ontologies
+      operationId: listOntologies
+      tags: [Ontologies]
+      responses:
+        '200':
+          description: Available ontologies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OntologyInfo'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, version]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        version:
+          type: string
+
+    GraphData:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    GraphNode:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [diagnosis, biomarker, pattern, mutation, medication, finding]
+        uri:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties: true
+
+    GraphEdge:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        label:
+          type: string
+        predicate:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties: true
+
+    Triple:
+      type: object
+      required: [subject, predicate, object]
+      properties:
+        subject:
+          type: string
+          format: uri
+        predicate:
+          type: string
+          format: uri
+        object:
+          type: string
+          description: URI or literal value
+
+    SparqlQuery:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          description: SPARQL query string
+        timeout:
+          type: integer
+          description: Query timeout in seconds
+          default: 30
+
+    SparqlResults:
+      type: object
+      properties:
+        head:
+          type: object
+          properties:
+            vars:
+              type: array
+              items:
+                type: string
+        results:
+          type: object
+          properties:
+            bindings:
+              type: array
+              items:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    value:
+                      type: string
+
+    OntologyInfo:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          example: NCIt
+        name:
+          type: string
+          example: NCI Thesaurus
+        version:
+          type: string
+        prefix:
+          type: string
+          format: uri
+        term_count:
+          type: integer
