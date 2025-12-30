@@ -1,0 +1,234 @@
+{
+  "rabbit_version": "3.12.0",
+  "rabbitmq_version": "3.12.0",
+  "product_name": "RabbitMQ",
+  "product_version": "3.12.0",
+  "users": [
+    {
+      "name": "guest",
+      "password_hash": "WiKnGnBXQ8t8rFgMHw8QPOOcVm0=",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "guest",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [
+    {
+      "name": "internal_cluster_id",
+      "value": "rabbitmq-cluster-id-oncology-xai"
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "ha-all",
+      "pattern": ".*",
+      "apply-to": "all",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic"
+      },
+      "priority": 0
+    }
+  ],
+  "queues": [
+    {
+      "name": "case.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 10000
+      }
+    },
+    {
+      "name": "image.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 10000
+      }
+    },
+    {
+      "name": "inference.jobs",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 1000
+      }
+    },
+    {
+      "name": "ehr.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 10000
+      }
+    },
+    {
+      "name": "graph.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 10000
+      }
+    },
+    {
+      "name": "ontology.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 10000
+      }
+    },
+    {
+      "name": "audit.events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 2592000000,
+        "x-max-length": 100000
+      }
+    },
+    {
+      "name": "celery",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000
+      }
+    },
+    {
+      "name": "celery.priority.high",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-priority": 10
+      }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "oncology.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "oncology.jobs",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "oncology.events",
+      "vhost": "/",
+      "destination": "case.events",
+      "destination_type": "queue",
+      "routing_key": "case.*",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.events",
+      "vhost": "/",
+      "destination": "image.events",
+      "destination_type": "queue",
+      "routing_key": "image.*",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.events",
+      "vhost": "/",
+      "destination": "ehr.events",
+      "destination_type": "queue",
+      "routing_key": "ehr.*",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.events",
+      "vhost": "/",
+      "destination": "graph.events",
+      "destination_type": "queue",
+      "routing_key": "graph.*",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.events",
+      "vhost": "/",
+      "destination": "ontology.events",
+      "destination_type": "queue",
+      "routing_key": "ontology.*",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.events",
+      "vhost": "/",
+      "destination": "audit.events",
+      "destination_type": "queue",
+      "routing_key": "*",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.jobs",
+      "vhost": "/",
+      "destination": "inference.jobs",
+      "destination_type": "queue",
+      "routing_key": "inference",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.jobs",
+      "vhost": "/",
+      "destination": "celery",
+      "destination_type": "queue",
+      "routing_key": "celery",
+      "arguments": {}
+    },
+    {
+      "source": "oncology.jobs",
+      "vhost": "/",
+      "destination": "celery.priority.high",
+      "destination_type": "queue",
+      "routing_key": "celery.priority.high",
+      "arguments": {}
+    }
+  ]
+}
