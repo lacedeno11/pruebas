@@ -1,0 +1,406 @@
+# DERCAS-ONCO-XAI V1 - Infrastructure Docker Compose
+# Complete infrastructure setup for the Explainable AI Oncology Platform
+
+version: '3.8'
+
+networks:
+  oncology-xai:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+  keycloak_data:
+  fuseki_data:
+  prometheus_data:
+  grafana_data:
+  jaeger_data:
+
+services:
+  # =============================================================================
+  # DATABASE SERVICES
+  # =============================================================================
+  
+  postgres:
+    image: postgres:16-alpine
+    container_name: oncology-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-oncology_xai}
+      POSTGRES_USER: ${POSTGRES_USER:-oncology_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oncology_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oncology_user} -d ${POSTGRES_DB:-oncology_xai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # CACHE & SESSION STORE
+  # =============================================================================
+  
+  redis:
+    image: redis:7-alpine
+    container_name: oncology-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.11
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # MESSAGE BROKER
+  # =============================================================================
+  
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: oncology-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,info}]
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.12
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # OBJECT STORAGE
+  # =============================================================================
+  
+  minio:
+    image: minio/minio:latest
+    container_name: oncology-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    ports:
+      - "${S3_ENDPOINT_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.13
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: oncology-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY};
+      mc mb minio/oncology-xai-images --ignore-existing;
+      mc mb minio/oncology-xai-overlays --ignore-existing;
+      mc mb minio/oncology-xai-xai --ignore-existing;
+      mc mb minio/oncology-xai-ehr --ignore-existing;
+      mc mb minio/oncology-xai-reports --ignore-existing;
+      mc mb minio/oncology-xai-ontology --ignore-existing;
+      mc policy set public minio/oncology-xai-images;
+      mc policy set public minio/oncology-xai-overlays;
+      echo 'MinIO buckets initialized successfully';
+      "
+    networks:
+      - oncology-xai
+
+  # =============================================================================
+  # AUTHENTICATION & AUTHORIZATION
+  # =============================================================================
+  
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: oncology-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-oncology_xai}
+      KC_DB_USERNAME: ${POSTGRES_USER:-oncology_user}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-oncology_password}
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.14
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # TRIPLE STORE (RDF/SPARQL)
+  # =============================================================================
+  
+  fuseki:
+    image: stain/jena-fuseki:latest
+    container_name: oncology-fuseki
+    restart: unless-stopped
+    environment:
+      ADMIN_PASSWORD: ${FUSEKI_ADMIN_PASSWORD:-admin}
+      JVM_ARGS: -Xmx2g -Xms1g
+    ports:
+      - "${FUSEKI_PORT:-3030}:3030"
+    volumes:
+      - fuseki_data:/fuseki
+      - ./fuseki/config.ttl:/fuseki/config.ttl:ro
+      - ./fuseki/ontologies:/fuseki/ontologies:ro
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.15
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3030/$/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # OBSERVABILITY - TRACING
+  # =============================================================================
+  
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: oncology-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${JAEGER_COLLECTOR_PORT:-14268}:14268"
+      - "${JAEGER_COLLECTOR_OTLP_PORT:-4317}:4317"
+      - "${JAEGER_COLLECTOR_OTLP_HTTP_PORT:-4318}:4318"
+      - "${JAEGER_AGENT_PORT:-6831}:6831/udp"
+      - "${JAEGER_AGENT_COMPACT_PORT:-6832}:6832/udp"
+      - "9411:9411"
+    volumes:
+      - jaeger_data:/tmp
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.16
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:16686/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # OBSERVABILITY - METRICS
+  # =============================================================================
+  
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: oncology-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.17
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # OBSERVABILITY - DASHBOARDS (Optional)
+  # =============================================================================
+  
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: oncology-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      oncology-xai:
+        ipv4_address: 172.20.0.18
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # =============================================================================
+  # UTILITY SERVICES
+  # =============================================================================
+  
+  # Health check service for monitoring all components
+  healthcheck:
+    image: curlimages/curl:latest
+    container_name: oncology-healthcheck
+    restart: "no"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - minio
+      - keycloak
+      - fuseki
+      - jaeger
+      - prometheus
+    command: >
+      sh -c "
+      echo 'Waiting for all services to be healthy...';
+      sleep 30;
+      echo 'Checking PostgreSQL...';
+      curl -f postgres:5432 || echo 'PostgreSQL check failed';
+      echo 'Checking Redis...';
+      curl -f redis:6379 || echo 'Redis check failed';
+      echo 'Checking RabbitMQ...';
+      curl -f rabbitmq:15672 || echo 'RabbitMQ check failed';
+      echo 'Checking MinIO...';
+      curl -f minio:9000/minio/health/live || echo 'MinIO check failed';
+      echo 'Checking Keycloak...';
+      curl -f keycloak:8080/health/ready || echo 'Keycloak check failed';
+      echo 'Checking Fuseki...';
+      curl -f fuseki:3030/$/ping || echo 'Fuseki check failed';
+      echo 'Checking Jaeger...';
+      curl -f jaeger:16686/ || echo 'Jaeger check failed';
+      echo 'Checking Prometheus...';
+      curl -f prometheus:9090/-/healthy || echo 'Prometheus check failed';
+      echo 'Health check completed';
+      "
+    networks:
+      - oncology-xai
