@@ -1,0 +1,178 @@
+# DERCAS-ONCO-XAI V1 - Git Ignore Configuration
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# Node.js (for webapp)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# React build
+apps/webapp/build/
+apps/webapp/dist/
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# ML models and data
+*.pkl
+*.joblib
+*.h5
+*.pb
+models/
+data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Local configuration overrides
+local_settings.py
+local_config.py
+
+# Docker volumes
+docker-volumes/
+
+# Generated documentation
+docs/_build/
+docs/openapi/*.json
+docs/openapi/*.yaml
+
+# Test artifacts
+.pytest_cache/
+test-results/
+test-reports/
+
+# Security
+*.pem
+*.key
+*.crt
+secrets/
+
+# MinIO data
+minio-data/
+
+# PostgreSQL data
+postgres-data/
+
+# Fuseki data
+fuseki-data/
+
+# Prometheus data
+prometheus-data/
+
+# Grafana data
+grafana-data/
