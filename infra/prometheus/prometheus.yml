@@ -1,0 +1,126 @@
+# DERCAS-ONCO-XAI Prometheus Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'dercas-onco-xai'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "rules/*.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Infrastructure services
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    scrape_interval: 30s
+    metrics_path: /minio/v2/metrics/cluster
+
+  # DERCAS-ONCO-XAI Application Services
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'case-service'
+    static_configs:
+      - targets: ['case-service:8001']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'image-service'
+    static_configs:
+      - targets: ['image-service:8002']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'inference-service'
+    static_configs:
+      - targets: ['inference-service:8003']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'ehr-service'
+    static_configs:
+      - targets: ['ehr-service:8004']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'graph-service'
+    static_configs:
+      - targets: ['graph-service:8005']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'ontology-admin-service'
+    static_configs:
+      - targets: ['ontology-admin-service:8006']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  - job_name: 'audit-service'
+    static_configs:
+      - targets: ['audit-service:8007']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Celery workers monitoring
+  - job_name: 'celery-workers'
+    static_configs:
+      - targets: ['inference-worker:9540', 'ehr-worker:9541', 'graph-worker:9542', 'ontology-worker:9543']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Jaeger metrics
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Keycloak metrics
+  - job_name: 'keycloak'
+    static_configs:
+      - targets: ['keycloak:8080']
+    scrape_interval: 30s
+    metrics_path: /auth/realms/master/metrics
+
+  # Fuseki metrics
+  - job_name: 'fuseki'
+    static_configs:
+      - targets: ['fuseki:3030']
+    scrape_interval: 30s
+    metrics_path: /$/stats
