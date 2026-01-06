@@ -1,0 +1,89 @@
+# DERCAS-ONCO-XAI V1 - Apache Jena Fuseki Configuration
+# Triple store configuration for ontologies and case-specific knowledge graphs
+
+@prefix fuseki:  <http://jena.apache.org/fuseki#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix tdb2:    <http://jena.apache.org/2016/tdb#> .
+@prefix ja:      <http://jena.hpl.hp.com/2005/11/Assembler#> .
+@prefix :        <#> .
+
+# Server configuration
+[] rdf:type fuseki:Server ;
+   fuseki:services (
+     :oncology-xai
+     :ncit
+     :mondo
+     :so
+     :cases
+   ) .
+
+# Main dataset for the oncology platform
+:oncology-xai rdf:type fuseki:Service ;
+    fuseki:name "oncology-xai" ;
+    fuseki:serviceQuery "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceUpload "upload" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:serviceReadGraphStore "get" ;
+    fuseki:dataset :oncology_dataset .
+
+:oncology_dataset rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki/databases/oncology-xai" ;
+    tdb2:unionDefaultGraph true .
+
+# NCIt (National Cancer Institute Thesaurus) dataset
+:ncit rdf:type fuseki:Service ;
+    fuseki:name "ncit" ;
+    fuseki:serviceQuery "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceUpload "upload" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:serviceReadGraphStore "get" ;
+    fuseki:dataset :ncit_dataset .
+
+:ncit_dataset rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki/databases/ncit" ;
+    tdb2:unionDefaultGraph false .
+
+# MONDO (Monarch Disease Ontology) dataset
+:mondo rdf:type fuseki:Service ;
+    fuseki:name "mondo" ;
+    fuseki:serviceQuery "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceUpload "upload" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:serviceReadGraphStore "get" ;
+    fuseki:dataset :mondo_dataset .
+
+:mondo_dataset rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki/databases/mondo" ;
+    tdb2:unionDefaultGraph false .
+
+# SO (Sequence Ontology) dataset
+:so rdf:type fuseki:Service ;
+    fuseki:name "so" ;
+    fuseki:serviceQuery "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceUpload "upload" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:serviceReadGraphStore "get" ;
+    fuseki:dataset :so_dataset .
+
+:so_dataset rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki/databases/so" ;
+    tdb2:unionDefaultGraph false .
+
+# Cases dataset for case-specific knowledge graphs
+:cases rdf:type fuseki:Service ;
+    fuseki:name "cases" ;
+    fuseki:serviceQuery "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceUpload "upload" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:serviceReadGraphStore "get" ;
+    fuseki:dataset :cases_dataset .
+
+:cases_dataset rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki/databases/cases" ;
+    tdb2:unionDefaultGraph false .
