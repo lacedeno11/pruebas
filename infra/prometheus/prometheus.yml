@@ -1,0 +1,159 @@
+# DERCAS-ONCO-XAI V1 Prometheus Configuration
+# Metrics collection for all platform services
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'oncology-xai-dev'
+    environment: 'development'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # API Gateway metrics
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Case Service metrics
+  - job_name: 'case-service'
+    static_configs:
+      - targets: ['host.docker.internal:8001']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Image Service metrics
+  - job_name: 'image-service'
+    static_configs:
+      - targets: ['host.docker.internal:8002']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Inference Service metrics
+  - job_name: 'inference-service'
+    static_configs:
+      - targets: ['host.docker.internal:8003']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # EHR Service metrics
+  - job_name: 'ehr-service'
+    static_configs:
+      - targets: ['host.docker.internal:8004']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Graph Service metrics
+  - job_name: 'graph-service'
+    static_configs:
+      - targets: ['host.docker.internal:8005']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Ontology Admin Service metrics
+  - job_name: 'ontology-admin-service'
+    static_configs:
+      - targets: ['host.docker.internal:8006']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Audit Service metrics
+  - job_name: 'audit-service'
+    static_configs:
+      - targets: ['host.docker.internal:8007']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # PostgreSQL metrics (using postgres_exporter)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # RabbitMQ metrics
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis metrics (using redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # MinIO metrics
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    metrics_path: /minio/v2/metrics/cluster
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Keycloak metrics
+  - job_name: 'keycloak'
+    static_configs:
+      - targets: ['keycloak:8080']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Fuseki metrics (if available)
+  - job_name: 'fuseki'
+    static_configs:
+      - targets: ['fuseki:3030']
+    metrics_path: /$/metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Jaeger metrics
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/
+    retention.time: 15d
+    retention.size: 10GB
+
+# Remote write configuration (for production)
+# remote_write:
+#   - url: "https://your-remote-prometheus-endpoint/api/v1/write"
+#     basic_auth:
+#       username: "your-username"
+#       password: "your-password"
