@@ -1,0 +1,432 @@
+# Guardrails Configuration for Policy Validation Copilot
+# This file defines security policies, rules, and thresholds for OWASP LLM Top 10 controls
+
+# PII Detection and Masking Configuration (LLM06)
+pii_detection:
+  enabled: true
+  confidence_threshold: 0.7
+  patterns:
+    - name: "email"
+      pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+      confidence: 0.9
+      replacement: "[EMAIL_REDACTED]"
+      enabled: true
+    
+    - name: "phone_us"
+      pattern: '\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b'
+      confidence: 0.85
+      replacement: "[PHONE_REDACTED]"
+      enabled: true
+    
+    - name: "ssn"
+      pattern: '\b\d{3}-\d{2}-\d{4}\b'
+      confidence: 0.95
+      replacement: "[SSN_REDACTED]"
+      enabled: true
+    
+    - name: "credit_card"
+      pattern: '\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b'
+      confidence: 0.9
+      replacement: "[CARD_REDACTED]"
+      enabled: true
+    
+    - name: "dni_argentina"
+      pattern: '\b\d{1,2}\.?\d{3}\.?\d{3}\b'
+      confidence: 0.8
+      replacement: "[DNI_REDACTED]"
+      enabled: true
+    
+    - name: "cuit_argentina"
+      pattern: '\b\d{2}-\d{8}-\d{1}\b'
+      confidence: 0.9
+      replacement: "[CUIT_REDACTED]"
+      enabled: true
+    
+    - name: "medical_record"
+      pattern: '\b(?:MR|MRN|MEDICAL\s+RECORD)[\s#:]*([A-Z0-9]{6,12})\b'
+      confidence: 0.85
+      replacement: "[MEDICAL_RECORD_REDACTED]"
+      enabled: true
+    
+    - name: "policy_number"
+      pattern: '\b(?:POLICY|POL)[\s#:]*([A-Z0-9]{8,15})\b'
+      confidence: 0.8
+      replacement: "[POLICY_NUM_REDACTED]"
+      enabled: true
+
+# Prompt Injection and Jailbreak Detection (LLM01)
+prompt_injection:
+  enabled: true
+  confidence_threshold: 0.6
+  block_threshold: 0.8
+  patterns:
+    - "ignore\\s+previous\\s+instructions"
+    - "forget\\s+everything\\s+above"
+    - "system\\s*:\\s*you\\s+are\\s+now"
+    - "new\\s+instructions\\s*:"
+    - "override\\s+your\\s+programming"
+    - "act\\s+as\\s+if\\s+you\\s+are"
+    - "pretend\\s+to\\s+be"
+    - "roleplay\\s+as"
+    - "simulate\\s+being"
+    - "bypass\\s+your\\s+guidelines"
+    - "ignore\\s+your\\s+constraints"
+    - "disregard\\s+your\\s+rules"
+    - "DAN\\s+mode"
+    - "developer\\s+mode"
+    - "god\\s+mode"
+    - "unrestricted\\s+mode"
+    - "jailbreak"
+    - "break\\s+free"
+    - "escape\\s+your\\s+programming"
+    - "remove\\s+all\\s+restrictions"
+    - "unlimited\\s+access"
+    - "admin\\s+privileges"
+
+# Rate Limiting and DoS Protection (LLM04)
+rate_limiting:
+  enabled: true
+  requests_per_hour: 100
+  requests_per_minute: 10
+  burst_limit: 5
+  block_duration_minutes: 60
+  whitelist_users: []
+  
+# Model Abuse Detection
+model_abuse:
+  enabled: true
+  max_tokens_per_request: 4000
+  max_requests_per_session: 50
+  suspicious_patterns:
+    - "\\b(?:hack|exploit|vulnerability|bypass|circumvent)\\b"
+    - "\\b(?:extract|steal|copy|download)\\s+(?:data|information|model)\\b"
+    - "\\b(?:reverse\\s+engineer|decompile|disassemble)\\b"
+
+# Evidence Anchoring Validation (LLM09)
+evidence_anchoring:
+  enabled: true
+  minimum_evidence_items: 1
+  minimum_coverage_score: 0.7
+  require_exact_citations: true
+  allowlist_validation: true
+  hallucination_detection:
+    enabled: true
+    confidence_threshold: 0.8
+    patterns:
+      - "according\\s+to\\s+(?:policy|regulation|document)\\s+(?!.*\\[citation)"
+      - "the\\s+(?:policy|regulation|document)\\s+states\\s+(?!.*\\[citation)"
+      - "as\\s+specified\\s+in\\s+(?!.*\\[citation)"
+
+# RBAC/ABAC Configuration
+rbac:
+  enabled: true
+  roles:
+    cabina:
+      permissions:
+        - "read_cases"
+        - "create_cases"
+        - "update_cases"
+        - "read_policies"
+        - "submit_for_approval"
+      restrictions:
+        - "cannot_approve_decisions"
+        - "cannot_access_audit_logs"
+    
+    supervisor:
+      permissions:
+        - "read_cases"
+        - "create_cases"
+        - "update_cases"
+        - "approve_decisions"
+        - "read_policies"
+        - "manage_exceptions"
+        - "read_audit_logs"
+      restrictions:
+        - "cannot_export_bulk_data"
+    
+    auditor:
+      permissions:
+        - "read_cases"
+        - "read_audit_logs"
+        - "export_data"
+        - "read_policies"
+        - "generate_reports"
+      restrictions:
+        - "cannot_modify_cases"
+        - "cannot_approve_decisions"
+    
+    admin:
+      permissions:
+        - "read_cases"
+        - "create_cases"
+        - "update_cases"
+        - "delete_cases"
+        - "approve_decisions"
+        - "read_policies"
+        - "manage_policies"
+        - "manage_exceptions"
+        - "read_audit_logs"
+        - "export_data"
+        - "manage_users"
+        - "system_configuration"
+      restrictions: []
+
+  # Attribute-Based Access Control Policies
+  policies:
+    - name: "time_based_access"
+      description: "Restrict access outside business hours for non-admin users"
+      conditions:
+        - attribute: "current_hour"
+          operator: "between"
+          value: [8, 18]
+        - attribute: "roles"
+          operator: "not_in"
+          value: ["admin"]
+      action: "deny"
+      enabled: false
+    
+    - name: "ip_restriction"
+      description: "Restrict access from unauthorized IP ranges"
+      conditions:
+        - attribute: "ip_address"
+          operator: "not_in_cidr"
+          value: ["10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12"]
+      action: "require_additional_auth"
+      enabled: false
+    
+    - name: "sensitive_data_access"
+      description: "Additional restrictions for sensitive data access"
+      conditions:
+        - attribute: "resource_type"
+          operator: "in"
+          value: ["audit_logs", "export_data"]
+        - attribute: "roles"
+          operator: "not_in"
+          value: ["auditor", "admin"]
+      action: "deny"
+      enabled: true
+
+# Allowlist Configuration
+allowlist:
+  enabled: true
+  sources:
+    # Policy documents
+    - "POL_SALUD_001"
+    - "POL_SALUD_002"
+    - "POL_DENTAL_001"
+    - "POL_VISION_001"
+    - "REG_GENERAL_001"
+    - "REG_EMERGENCIAS_001"
+    
+    # Regulatory documents
+    - "SSS_RESOLUCION_001"
+    - "ANMAT_DISPOSICION_001"
+    - "MINISTERIO_SALUD_001"
+    
+    # Internal procedures
+    - "PROC_AUTORIZACION_001"
+    - "PROC_AUDITORIA_001"
+    - "MANUAL_OPERATIVO_001"
+  
+  validation:
+    strict_mode: true
+    require_version_check: true
+    allow_emergency_override: false
+
+# Custom Guardrail Rules
+rules:
+  - rule_id: "financial_data_protection"
+    name: "Financial Data Protection"
+    description: "Detect and protect financial information"
+    rule_type: "content_analysis"
+    severity: "HIGH"
+    enabled: true
+    patterns:
+      - "\\b(?:salary|income|revenue|profit|loss)\\s*:?\\s*\\$?[0-9,.]+"
+      - "\\b(?:account|routing)\\s+number\\s*:?\\s*[0-9-]+"
+      - "\\b(?:balance|amount|payment)\\s*:?\\s*\\$[0-9,.]+"
+    thresholds:
+      confidence: 0.8
+    actions:
+      - "REDACT"
+    applies_to:
+      - "case_processing"
+      - "evidence_analysis"
+    exceptions: []
+  
+  - rule_id: "medical_confidentiality"
+    name: "Medical Information Confidentiality"
+    description: "Protect medical information and diagnoses"
+    rule_type: "content_analysis"
+    severity: "CRITICAL"
+    enabled: true
+    patterns:
+      - "\\b(?:diagnosis|condition|treatment|medication|prescription)\\s*:?\\s*[A-Za-z0-9\\s]+"
+      - "\\b(?:ICD|CPT|HCPCS)\\s*[-:]?\\s*[A-Z0-9.]+"
+      - "\\b(?:blood\\s+pressure|heart\\s+rate|temperature)\\s*:?\\s*[0-9/.]+"
+    thresholds:
+      confidence: 0.9
+    actions:
+      - "REQUIRE_HITL"
+    applies_to:
+      - "case_processing"
+      - "evidence_analysis"
+      - "decision_making"
+    exceptions:
+      - "authorized_medical_review"
+  
+  - rule_id: "external_system_references"
+    name: "External System References"
+    description: "Detect references to external systems or APIs"
+    rule_type: "content_analysis"
+    severity: "MEDIUM"
+    enabled: true
+    patterns:
+      - "\\b(?:api|endpoint|url|http|https)\\s*:?\\s*[A-Za-z0-9./_-]+"
+      - "\\b(?:database|server|host)\\s*:?\\s*[A-Za-z0-9.-]+"
+      - "\\b(?:connect|query|execute)\\s+(?:database|server|api)"
+    thresholds:
+      confidence: 0.7
+    actions:
+      - "BLOCK"
+    applies_to:
+      - "case_processing"
+      - "policy_retrieval"
+    exceptions: []
+  
+  - rule_id: "excessive_agency_detection"
+    name: "Excessive Agency Detection"
+    description: "Detect attempts to perform unauthorized actions"
+    rule_type: "behavioral_analysis"
+    severity: "HIGH"
+    enabled: true
+    patterns:
+      - "\\b(?:delete|remove|modify|change)\\s+(?:policy|rule|configuration)"
+      - "\\b(?:approve|reject|authorize)\\s+(?:automatically|without\\s+review)"
+      - "\\b(?:bypass|skip|ignore)\\s+(?:approval|review|validation)"
+    thresholds:
+      confidence: 0.8
+    actions:
+      - "BLOCK"
+      - "ESCALATE"
+    applies_to:
+      - "decision_making"
+      - "case_processing"
+    exceptions: []
+
+# Security Event Configuration
+security_events:
+  enabled: true
+  retention_days: 90
+  alert_thresholds:
+    critical_events_per_hour: 5
+    high_events_per_hour: 20
+    medium_events_per_hour: 100
+  
+  notification:
+    enabled: true
+    channels:
+      - "email"
+      - "slack"
+      - "syslog"
+    
+    recipients:
+      critical:
+        - "security-team@company.com"
+        - "ciso@company.com"
+      high:
+        - "security-team@company.com"
+        - "ops-team@company.com"
+      medium:
+        - "ops-team@company.com"
+  
+  auto_response:
+    enabled: true
+    actions:
+      critical:
+        - "block_user"
+        - "escalate_to_security"
+        - "create_incident"
+      high:
+        - "require_additional_auth"
+        - "notify_supervisor"
+      medium:
+        - "log_event"
+        - "increase_monitoring"
+
+# Performance and Monitoring
+performance:
+  max_processing_time_ms: 500
+  cache_enabled: true
+  cache_ttl_seconds: 300
+  metrics_enabled: true
+  
+  monitoring:
+    health_check_interval_seconds: 60
+    performance_alert_threshold_ms: 1000
+    error_rate_threshold_percent: 5
+    
+# Integration Settings
+integration:
+  audit_service:
+    enabled: true
+    log_all_events: true
+    include_request_details: true
+  
+  ml_services:
+    enabled: true
+    validate_model_outputs: true
+    confidence_threshold: 0.7
+  
+  external_apis:
+    timeout_seconds: 30
+    retry_attempts: 3
+    circuit_breaker_enabled: true
+
+# Environment-specific Overrides
+environments:
+  development:
+    pii_detection:
+      enabled: false
+    rate_limiting:
+      enabled: false
+    security_events:
+      retention_days: 7
+  
+  testing:
+    pii_detection:
+      enabled: true
+    rate_limiting:
+      requests_per_hour: 1000
+    security_events:
+      retention_days: 1
+  
+  production:
+    pii_detection:
+      enabled: true
+    rate_limiting:
+      enabled: true
+    security_events:
+      retention_days: 90
+      notification:
+        enabled: true
+
+# Compliance and Regulatory Settings
+compliance:
+  gdpr:
+    enabled: true
+    data_retention_days: 2555  # 7 years
+    right_to_erasure: true
+    consent_tracking: true
+  
+  hipaa:
+    enabled: true
+    audit_all_access: true
+    encryption_required: true
+    minimum_necessary_standard: true
+  
+  local_regulations:
+    argentina_data_protection:
+      enabled: true
+      local_storage_required: true
+      cross_border_restrictions: true
