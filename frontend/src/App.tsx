@@ -1,11 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useEffect } from 'react';
+import Dashboard from '@/components/Dashboard';
 
-// Components will be imported once created
-// import Dashboard from '@/components/Dashboard';
-
-// Create a client for React Query
+// Create a client for React Query with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -24,20 +22,15 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Toast notifications */}
       <Toaster position="top-right" />
       
-      {/* Main application content */}
-      <div id="app">
-        {/* Dashboard component will be rendered here once created */}
-        <div className="min-h-screen bg-gray-50">
-          <p className="p-8 text-center text-gray-600">
-            Loading DERCAS PEI Dashboard...
-          </p>
-        </div>
-      </div>
+      {/* Main application */}
+      <Dashboard />
     </QueryClientProvider>
   );
 }
 
 export default App;
+
 
