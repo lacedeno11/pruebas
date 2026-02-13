@@ -24,7 +24,7 @@ export function Dashboard() {
       const newIsMobile = window.innerWidth < 768;
       setIsMobile(newIsMobile);
       if (newIsMobile) {
-        setChatOpen(false); // Hide chat on mobile by default
+        setChatOpen(false);tOpen(false); // Hide chat on mobile by default
       }
     };
 
@@ -94,6 +94,7 @@ export function Dashboard() {
 }
 
 export default Dashboard;
+
 
 
 
