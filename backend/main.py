@@ -72,12 +72,21 @@ async def lifespan(app: FastAPI):
         init_db.seed_cuadrillas()
         logger.info("✅ Cuadrillas seeded")
 
-        # Initialize Orchestrator (when agents are implemented)
+        # Initialize Orchestrator for agent coordination
+        # Note: Orchestrator will be initialized when agents are implemented
         # logger.info("Initializing Agent Orchestrator...")
-        # orchestrator = Orchestrator()
-        # orchestrator.schedule_governance_jobs()
-        # logger.info("✅ Agent Orchestrator initialized")
-        # app.state.orchestrator = orchestrator
+        # try:
+        #     from backend.agents.orchestrator import Orchestrator
+        #     orchestrator = Orchestrator()
+        #     orchestrator.schedule_governance_jobs()
+        #     logger.info("✅ Agent Orchestrator initialized")
+        #     logger.info("  - Scheduled: Centroid recalculation at 00:00 (Phase 3)")
+        #     logger.info("  - Scheduled: Inactivity checks at 09:00 (GobernanzaAgent)")
+        #     app.state.orchestrator = orchestrator
+        # except ImportError:
+        #     logger.warning("⚠️  Agent Orchestrator not yet implemented")
+        # except Exception as e:
+        #     logger.error(f"⚠️  Failed to initialize Orchestrator: {e}")
 
         logger.info("=" * 80)
         logger.info("✅ DERCAS PEI Ready - All systems operational")
@@ -221,6 +230,7 @@ if __name__ == "__main__":
         reload=SYSTEM_MODE == "MOCK",  # Enable reload in MOCK mode for development
         log_level="info",
     )
+
 
 
 
