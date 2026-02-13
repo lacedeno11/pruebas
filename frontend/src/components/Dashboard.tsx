@@ -8,10 +8,10 @@ import AgentChat from './AgentChat';
 /**
  * Main Dashboard component - DERCAS PEI
  * Layout: 
- *   - Header bar at top
- *   - Map section (40vh on desktop)
- *   - Kanban section (60vh on desktop)
- *   - AgentChat sidebar (toggleable, overlays on right)
+ *   - Header bar at top with DERCAS PEI title, mode badge, controls
+ *   - Map section (40vh on desktop) - Geographic visualization
+ *   - Kanban section (60vh on desktop) - OT status management
+ *   - AgentChat sidebar (toggleable, overlays on right) - AI assistant
  * Mobile: Responsive layout with floating chat button
  */
 export function Dashboard() {
@@ -24,7 +24,7 @@ export function Dashboard() {
       const newIsMobile = window.innerWidth < 768;
       setIsMobile(newIsMobile);
       if (newIsMobile) {
-        setChatOpen(false);
+        setChatOpen(false); // Hide chat on mobile by default
       }
     };
 
@@ -34,33 +34,42 @@ export function Dashboard() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
-      {/* Header */}
+      {/* Header - Top navigation bar */}
       <Header />
 
-      {/* Main content area */}
+      {/* Main content area with map and kanban */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Content wrapper (Map + Kanban) */}
+        {/* Content wrapper - Map and Kanban sections */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Map section (40vh on desktop) */}
-          <div className={`${isMobile && !chatOpen ? 'flex-1' : 'h-[40vh]'} overflow-hidden border-b border-gray-200 bg-white`}>
+          {/* Map section - 40vh on desktop, flexible on mobile */}
+          <div
+            className={`${
+              isMobile && !chatOpen ? 'flex-1' : 'h-[40vh]'
+            } overflow-hidden border-b border-gray-200 bg-white`}
+          >
             <MapView />
           </div>
 
-          {/* Kanban section (60vh on desktop) */}
-          <div className={`${isMobile && !chatOpen ? 'flex-1' : 'h-[60vh]'} overflow-hidden`}>
+          {/* Kanban section - 60vh on desktop, flexible on mobile */}
+          <div
+            className={`${isMobile && !chatOpen ? 'flex-1' : 'h-[60vh]'} overflow-hidden`}
+          >
             <KanbanBoard />
           </div>
         </div>
 
-        {/* Agent Chat sidebar (overlay on right) */}
-        {chatOpen && <AgentChat isOpen={chatOpen} onToggle={() => setChatOpen(false)} />}
+        {/* Agent Chat sidebar - overlays on right side, toggleable */}
+        {chatOpen && (
+          <AgentChat isOpen={chatOpen} onToggle={() => setChatOpen(false)} />
+        )}
 
         {/* Floating chat button on mobile when chat is closed */}
         {isMobile && !chatOpen && (
           <button
             onClick={() => setChatOpen(true)}
             className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all z-30 flex items-center justify-center"
-            title="Open chat"
+            title="Abrir asistente"
+            aria-label="Open chat"
           >
             <Menu size={24} />
           </button>
@@ -68,7 +77,9 @@ export function Dashboard() {
       </div>
     </div>
   );
-}tOpen(false); // Hide chat on mobile by default
+}
+
+export default Dashboard;tOpen(false); // Hide chat on mobile by default
       }
     };
 
@@ -138,6 +149,7 @@ export function Dashboard() {
 }
 
 export default Dashboard;
+
 
 
 
