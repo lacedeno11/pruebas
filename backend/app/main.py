@@ -45,8 +45,15 @@ async def lifespan(app: FastAPI):
     """
     Manage application lifecycle events.
 
-    Startup: Log system information and initialize resources
-    Shutdown: Clean up resources and log shutdown message
+    Startup:
+    1. Log system information and configuration
+    2. Initialize and start the APScheduler cron job scheduler
+    3. Register scheduled tasks (inactivity check, detention warnings, route optimization)
+    4. Enable automated governance and planning operations
+
+    Shutdown:
+    1. Gracefully stop the APScheduler scheduler
+    2. Log shutdown message
     """
     # Startup event
     logger.info("=" * 80)
@@ -59,12 +66,45 @@ async def lifespan(app: FastAPI):
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'configured'}")
     logger.info("=" * 80)
 
+    # Initialize and start cron job scheduler
+    try:
+        logger.info("📅 Initializing Cron Job Scheduler...")
+        scheduler = setup_scheduler()
+        scheduler.start()
+        logger.info("=" * 80)
+        logger.info("✓ Cron Jobs Initialized and Started")
+        logger.info("  • Inactivity Check: Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)")
+        logger.info("  • Detention Warnings: Daily at 08:00 UTC")
+        logger.info("  • Route Optimization: Daily at 00:00 UTC")
+        logger.info("=" * 80)
+    except Exception as e:
+        logger.error(
+            f"❌ Failed to start scheduler: {type(e).__name__}: {str(e)}",
+            exc_info=True,
+        )
+        raise
+
     yield
 
     # Shutdown event
-    logger.info("=" * 80)
-    logger.info("🛑 Shutting down DERCAS PEI Backend")
-    logger.info("=" * 80)
+    try:
+        logger.info("=" * 80)
+        logger.info("🛑 Shutting down DERCAS PEI Backend")
+        logger.info("=" * 80)
+
+        # Stop the scheduler
+        if cron_scheduler and cron_scheduler.running:
+            logger.info("⏹️  Stopping Cron Job Scheduler...")
+            cron_scheduler.shutdown()
+            logger.info("✓ Cron Job Scheduler stopped")
+
+        logger.info("✓ Backend shutdown completed")
+        logger.info("=" * 80)
+    except Exception as e:
+        logger.error(
+            f"❌ Error during shutdown: {type(e).__name__}: {str(e)}",
+            exc_info=True,
+        )
 
 
 # Create FastAPI application
@@ -241,5 +281,6 @@ if __name__ == "__main__":
         reload=True,
         log_level="info",
     )
+
 
 
