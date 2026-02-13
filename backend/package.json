@@ -1,0 +1,38 @@
+{
+  "name": "dercas-pei-backend",
+  "version": "0.1.0",
+  "description": "DERCAS PEI Backend - Agentic Platform API",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "express": "4.18.x",
+    "@types/express": "4.17.x",
+    "dotenv": "16.x",
+    "cors": "2.8.x",
+    "@types/cors": "2.8.x",
+    "@prisma/client": "5.x",
+    "openai": "4.x",
+    "node-cron": "3.x",
+    "@types/node-cron": "3.x",
+    "nodemailer": "6.x",
+    "@types/nodemailer": "6.x",
+    "zod": "3.x"
+  },
+  "devDependencies": {
+    "tsx": "4.x",
+    "prisma": "5.x",
+    "typescript": "5.3.x",
+    "@types/node": "20.x",
+    "nodemon": "3.x",
+    "@faker-js/faker": "8.x"
+  }
+}
+
