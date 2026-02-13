@@ -18,7 +18,7 @@
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
     "leaflet": "^1.9.4",
-    "lucide-react": "^0.314.0",
+    "lucide-react": "^0.395.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.4.1",
@@ -43,4 +43,5 @@
     "vite": "^7.3.1"
   }
 }
+
 
