@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { Send, X, MessageCircle } from 'lucide-react';
+import { Send, X, MessageCircle, Copy, CheckCircle } from 'lucide-react';
 import { routeAgentMessage } from '@/services/api';
 
 export interface ChatMessage {
@@ -13,6 +13,14 @@ export interface AgentChatProps {
   isOpen?: boolean;
   onToggle?: () => void;
 }
+
+// Quick action commands
+const QUICK_ACTIONS = [
+  { label: '📋 Planifica OTs pendientes', command: 'Planifica los OTs que están en estado PREPLANIFICADA' },
+  { label: '⚖️ Revisa gobernanza', command: 'Revisa las reglas de gobernanza y alertas' },
+  { label: '👥 Estado de cuadrillas', command: 'Muéstrame el estado actual de todas las cuadrillas' },
+  { label: '⏸️ OTs detenidas', command: 'Cuáles son los OTs que están en estado DETENIDA' },
+];
 
 /**
  * Agent Chat sidebar component for user-agent interaction
@@ -27,6 +35,7 @@ export function AgentChat({ isOpen = true, onToggle }: AgentChatProps) {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -341,4 +350,5 @@ function copyToClipboard(content: string) {
 }
 
 export default AgentChat;
+
 
