@@ -100,6 +100,9 @@ const startServer = async () => {
           DATABASE_URL: env.DATABASE_URL.substring(0, 50) + '...',
         },
       });
+
+      // Start governance cron jobs after server is listening
+      startGovernanceCron();
     });
   } catch (error) {
     logger.error('Failed to start server', { error });
@@ -123,5 +126,6 @@ process.on('unhandledRejection', (reason, promise) => {
 startServer();
 
 export default app;
+
 
 
