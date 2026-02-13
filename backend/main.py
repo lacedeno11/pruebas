@@ -129,17 +129,16 @@ app.add_middleware(
 
 
 # ============================================================================
-# API Routes (will be registered when route files are created)
+# API Routes Registration
 # ============================================================================
 
-
-# @app.include_router(ots.router)
-# @app.include_router(cuadrillas.router)
-# @app.include_router(planning.router)
-# @app.include_router(governance.router)
-# @app.include_router(notifications.router)
-# @app.include_router(mock.router)
-# @app.include_router(agents.router)
+app.include_router(ots.router)
+app.include_router(cuadrillas.router)
+app.include_router(planning.router)
+app.include_router(governance.router)
+app.include_router(notifications.router)
+app.include_router(mock.router)
+app.include_router(agents.router)
 
 
 # ============================================================================
@@ -222,5 +221,6 @@ if __name__ == "__main__":
         reload=SYSTEM_MODE == "MOCK",  # Enable reload in MOCK mode for development
         log_level="info",
     )
+
 
 
