@@ -59,7 +59,7 @@ def _get_llm_provider():
     if HAS_ANTHROPIC and "claude" in llm_model.lower():
         anthropic_key = os.getenv("ANTHROPIC_API_KEY")
         if anthropic_key:
-            return ChatAhathropic(model_name=llm_model, api_key=anthropic_key, temperature=0)
+            return ChatAnthropic(model_name=llm_model, api_key=anthropic_key, temperature=0)
     
     # Fallback: use rule-based routing
     logger.warning("No LLM provider configured, falling back to rule-based routing")
@@ -226,4 +226,5 @@ def get_action_description(action: str) -> str:
         ActionType.CHAT.value: "Answering questions and providing information",
     }
     return descriptions.get(action, "Unknown action")
+
 
