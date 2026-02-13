@@ -10,8 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^8.1.2",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "axios": "^1.6.5",
+    "date-fns": "^3.3.1",
+    "leaflet": "^1.9.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-leaflet": "^4.2.1",
+    "react-modal": "^3.16.1",
+    "react-toastify": "^10.0.3",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -25,3 +35,4 @@
     "vite": "^7.3.1"
   }
 }
+
