@@ -24,7 +24,51 @@ export function Dashboard() {
       const newIsMobile = window.innerWidth < 768;
       setIsMobile(newIsMobile);
       if (newIsMobile) {
-        setChatOpen(false);tOpen(false); // Hide chat on mobile by default
+        setChatOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Header */}
+      <Header />
+
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Content wrapper (Map + Kanban) */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Map section (40vh on desktop) */}
+          <div className={`${isMobile && !chatOpen ? 'flex-1' : 'h-[40vh]'} overflow-hidden border-b border-gray-200 bg-white`}>
+            <MapView />
+          </div>
+
+          {/* Kanban section (60vh on desktop) */}
+          <div className={`${isMobile && !chatOpen ? 'flex-1' : 'h-[60vh]'} overflow-hidden`}>
+            <KanbanBoard />
+          </div>
+        </div>
+
+        {/* Agent Chat sidebar (overlay on right) */}
+        {chatOpen && <AgentChat isOpen={chatOpen} onToggle={() => setChatOpen(false)} />}
+
+        {/* Floating chat button on mobile when chat is closed */}
+        {isMobile && !chatOpen && (
+          <button
+            onClick={() => setChatOpen(true)}
+            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all z-30 flex items-center justify-center"
+            title="Open chat"
+          >
+            <Menu size={24} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}tOpen(false); // Hide chat on mobile by default
       }
     };
 
@@ -94,6 +138,7 @@ export function Dashboard() {
 }
 
 export default Dashboard;
+
 
 
 
