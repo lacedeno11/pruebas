@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import env from './config/environment';
 import { prisma } from './lib/prisma';
 import { logger } from './utils/logger';
+import startGovernanceCron from './jobs/governanceCron';
 
 // Import route handlers
 import otsRouter from './routes/ots';
@@ -122,4 +123,5 @@ process.on('unhandledRejection', (reason, promise) => {
 startServer();
 
 export default app;
+
 
