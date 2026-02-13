@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
-import { useUIStore } from '@/stores/uiStore';
+import Header from './Header';
 import MapView from './MapView';
 import KanbanBoard from './KanbanBoard';
 import AgentChat from './AgentChat';
-import Header from './Header';
 
 /**
  * Main Dashboard component - DERCAS PEI
@@ -16,15 +15,16 @@ import Header from './Header';
  * Mobile: Responsive layout with floating chat button
  */
 export function Dashboard() {
-  const { selectedOTId } = useUIStore();
   const [chatOpen, setChatOpen] = useState(window.innerWidth > 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // Handle window resize for responsive behavior
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth <= 768) {
-        setShowChat(false); // Hide chat on mobile by default
+      const newIsMobile = window.innerWidth < 768;
+      setIsMobile(newIsMobile);
+      if (newIsMobile) {
+        setChatOpen(false); // Hide chat on mobile by default
       }
     };
 
@@ -94,5 +94,6 @@ export function Dashboard() {
 }
 
 export default Dashboard;
+
 
 
