@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 # Import database initialization
 from backend.database import init_db
 
-# Import routers (will be created in subsequent tasks)
-# from backend.api.routes import ots, cuadrillas, planning, governance, notifications, mock, agents
+# Import routers
+from backend.api.routes import ots, cuadrillas, planning, governance, notifications, mock, agents
 
-# Import Orchestrator (will be created in agents task)
+# Import Orchestrator (placeholder for now, will be fully implemented with agents)
 # from backend.agents.orchestrator import Orchestrator
 
 # Get system configuration
@@ -222,4 +222,5 @@ if __name__ == "__main__":
         reload=SYSTEM_MODE == "MOCK",  # Enable reload in MOCK mode for development
         log_level="info",
     )
+
 
