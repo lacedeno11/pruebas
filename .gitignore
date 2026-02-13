@@ -1,0 +1,334 @@
+# ============================================================================
+# PEI Platform - DERCAS TO-BE AGÉNTICO
+# Git Ignore File - Both Backend and Frontend
+# ============================================================================
+
+# ============================================================================
+# Python - Backend
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+pei.db
+
+# ============================================================================
+# Node.js - Frontend
+# ============================================================================
+
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Production
+dist/
+build/
+.next/
+out/
+
+# Misc
+.DS_Store
+*.pem
+*.jks
+
+# Debug
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Testing
+.nyc_output/
+coverage/
+
+# Misc
+.cache/
+*.bak
+
+# ============================================================================
+# IDE and Editor Settings
+# ============================================================================
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+.vscode/settings.json
+.vscode/launch.json
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+.vim/
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Atom
+.atom/
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ============================================================================
+# Logs
+# ============================================================================
+
+*.log
+logs/
+*.log.*
+
+# ============================================================================
+# Build Artifacts
+# ============================================================================
+
+dist/
+build/
+*.egg-info/
+.eggs/
+wheel/
+
+# ============================================================================
+# Virtual Environments
+# ============================================================================
+
+venv/
+env/
+ENV/
+.venv
+.env
+
+# ============================================================================
+# Runtime Files
+# ============================================================================
+
+*.pid
+*.seed
+*.pid.lock
+.env.local
+.env.*.local
+
+# ============================================================================
+# Temporary Files
+# ============================================================================
+
+.tmp/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# ============================================================================
+# System Files (Keep at end for priority)
+# ============================================================================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================================================
+# Project-Specific
+# ============================================================================
+
+# SQLite databases
+pei.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+
+# Environment files (only keep .env.example)
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+backend/app/__pycache__/
+frontend/dist/
+frontend/build/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated files
+*.pyc
+*.pyo
+
+# Frontend specific
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Backend specific
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+
