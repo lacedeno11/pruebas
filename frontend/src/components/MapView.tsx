@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -263,4 +263,5 @@ function MapEventHandler({ setMapCenter }: MapEventHandlerProps) {
 }
 
 export default MapView;
+
 
