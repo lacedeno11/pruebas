@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Menu } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import MapView from './MapView';
 import KanbanBoard from './KanbanBoard';
 import AgentChat from './AgentChat';
-import OTDetailModal from './OTDetailModal';
 import Header from './Header';
-import { MessageCircle } from 'lucide-react';
 
 /**
- * Main Dashboard component
- * Layout: Header + Map (top 40vh) + Kanban (bottom 60vh) + Agent Chat sidebar
+ * Main Dashboard component - DERCAS PEI
+ * Layout: 
+ *   - Header bar at top
+ *   - Map section (40vh on desktop)
+ *   - Kanban section (60vh on desktop)
+ *   - AgentChat sidebar (toggleable, overlays on right)
+ * Mobile: Responsive layout with floating chat button
  */
 export function Dashboard() {
-  const { selectedOTId, sidebarOpen } = useUIStore();
+  const { selectedOTId } = useUIStore();
   const [chatOpen, setChatOpen] = useState(window.innerWidth > 768);
-  const [showChat, setShowChat] = useState(window.innerWidth > 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // Handle window resize for responsive behavior
   React.useEffect(() => {
@@ -90,4 +94,5 @@ export function Dashboard() {
 }
 
 export default Dashboard;
+
 
