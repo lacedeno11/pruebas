@@ -59,17 +59,18 @@ async def system_info():
     }
 
 
-# Mount routers (will be added as routes are created)
-# Future imports will be added here:
-# from backend.api.routes import ots, cuadrillas, planning, validation, chat
-# app.include_router(ots.router, prefix="/api", tags=["OTs"])
-# app.include_router(cuadrillas.router, prefix="/api", tags=["Cuadrillas"])
-# app.include_router(planning.router, prefix="/api", tags=["Planning"])
-# app.include_router(validation.router, prefix="/api", tags=["Validation"])
-# app.include_router(chat.router, prefix="/api", tags=["Chat"])
+# Mount routers from routes module
+from backend.api.routes import ots, cuadrillas, planning, validation, chat
+
+app.include_router(ots.router, prefix="/api", tags=["OTs"])
+app.include_router(cuadrillas.router, prefix="/api", tags=["Cuadrillas"])
+app.include_router(planning.router, prefix="/api", tags=["Planning"])
+app.include_router(validation.router, prefix="/api", tags=["Validation"])
+app.include_router(chat.router, prefix="/api", tags=["Chat"])
 
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+
 
