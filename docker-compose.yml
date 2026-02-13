@@ -1,0 +1,254 @@
+# ============================================================================
+# PEI Platform - DERCAS TO-BE AGÉNTICO
+# Docker Compose Configuration
+# ============================================================================
+# NOTE: This file is for FUTURE PRODUCTION DEPLOYMENT
+# Current development uses SQLite database and runs services locally
+# To use this configuration:
+#   1. Ensure Docker and Docker Compose are installed
+#   2. Copy .env.example to .env and configure for production
+#   3. Update DATABASE_URL to use PostgreSQL connection string
+#   4. Run: docker-compose up -d
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ========================================================================
+  # PostgreSQL Database
+  # ========================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: pei-platform-db
+    environment:
+      POSTGRES_USER: pei_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: pei_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persist database data
+      - pei_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pei_user -d pei_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pei-network
+    restart: unless-stopped
+    # NOTE: In production, use environment variables for credentials
+    # Never hardcode passwords in compose files
+
+  # ========================================================================
+  # FastAPI Backend Application
+  # ========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pei-platform-backend
+    environment:
+      # System Configuration
+      SYSTEM_MODE: PRODUCTION
+      
+      # Database Configuration
+      DATABASE_URL: postgresql://pei_user:${DB_PASSWORD:-change_me_in_production}@db:5432/pei_db
+      
+      # LLM Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-your_key_here}
+      
+      # External Services
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_token}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-your_email}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-your_password}
+      
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-change_this_to_secure_random_key}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      
+      # API Endpoints (for PRODUCTION mode)
+      TELCOS_API_URL: ${TELCOS_API_URL:-https://api.telcos.com}
+      TELCODRIVE_API_URL: ${TELCODRIVE_API_URL:-https://api.telcodrive.com}
+    
+    ports:
+      - "8000:8000"
+    
+    depends_on:
+      db:
+        condition: service_healthy
+    
+    volumes:
+      # For development: mount source code for hot reload
+      # - ./backend:/app
+      # For production: don't mount source, use built image only
+      - pei_backend_logs:/app/logs
+    
+    command: >
+      sh -c "
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Starting Uvicorn server...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+    
+    networks:
+      - pei-network
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========================================================================
+  # React Frontend Application (served by Nginx)
+  # ========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pei-platform-frontend
+    ports:
+      - "3000:80"
+    
+    environment:
+      # API endpoint for frontend (internal communication)
+      VITE_API_URL: http://backend:8000
+    
+    depends_on:
+      - backend
+    
+    volumes:
+      # Nginx configuration
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf:ro
+      # For development: mount source for live reload
+      # - ./frontend/src:/app/src
+    
+    networks:
+      - pei-network
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========================================================================
+  # Nginx Reverse Proxy (Optional - for production)
+  # ========================================================================
+  # Uncomment this section to use Nginx as a reverse proxy
+  # This adds SSL/TLS termination and load balancing capabilities
+  # proxy:
+  #   image: nginx:alpine
+  #   container_name: pei-platform-proxy
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #     - ./nginx/templates:/etc/nginx/templates:ro
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #   networks:
+  #     - pei-network
+  #   restart: unless-stopped
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  pei-network:
+    driver: bridge
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  pei_db_data:
+    driver: local
+  pei_backend_logs:
+    driver: local
+
+# ============================================================================
+# DEPLOYMENT INSTRUCTIONS
+# ============================================================================
+# 
+# Prerequisites:
+#   - Docker Desktop or Docker Engine installed
+#   - Docker Compose v1.29+ (usually included with Docker Desktop)
+#   - .env file configured with production values
+#
+# Setup:
+#   1. Navigate to project root directory
+#   2. Create .env file with production configuration:
+#        cp backend/.env.example .env
+#        # Edit .env with production values
+#   3. Build and start services:
+#        docker-compose up -d
+#   4. Monitor logs:
+#        docker-compose logs -f backend
+#        docker-compose logs -f frontend
+#        docker-compose logs -f db
+#
+# Access:
+#   - Frontend: http://localhost:3000
+#   - Backend API: http://localhost:8000
+#   - API Docs: http://localhost:8000/docs
+#   - Database: localhost:5432
+#
+# Management:
+#   - Stop services: docker-compose down
+#   - Remove volumes: docker-compose down -v
+#   - Rebuild images: docker-compose build --no-cache
+#   - Restart service: docker-compose restart backend
+#   - View logs: docker-compose logs [service_name]
+#   - Execute command: docker-compose exec backend python -c "..."
+#
+# Database Management:
+#   - Connect to PostgreSQL:
+#        docker-compose exec db psql -U pei_user -d pei_db
+#   - Backup database:
+#        docker-compose exec db pg_dump -U pei_user pei_db > backup.sql
+#   - Restore database:
+#        docker-compose exec db psql -U pei_user pei_db < backup.sql
+#
+# Development vs Production:
+#   - For development: Use local setup (backend/README.md)
+#   - For staging: Use this compose file with staging credentials
+#   - For production: Configure with proper SSL, secrets management, monitoring
+#
+# Security Considerations:
+#   - Never commit .env file with real credentials
+#   - Use environment variables or secrets management system
+#   - Enable SSL/TLS with proper certificates
+#   - Restrict database access to backend service only
+#   - Use strong, randomly generated passwords
+#   - Keep images updated with latest security patches
+#   - Implement proper backup and recovery procedures
+#
+# Scaling:
+#   - Multiple backend instances: docker-compose up -d --scale backend=3
+#   - Use load balancer (HAProxy, AWS ELB, etc.) in front
+#   - Use separate database for high availability
+#   - Implement caching layer (Redis) if needed
+#
+# Monitoring:
+#   - Use docker-compose logs for container logs
+#   - Set up ELK stack (Elasticsearch, Logstash, Kibana) for log aggregation
+#   - Use Prometheus + Grafana for metrics and monitoring
+#   - Configure health checks (included in this compose file)
+#   - Implement application performance monitoring (APM)
+#
+# ============================================================================
+
