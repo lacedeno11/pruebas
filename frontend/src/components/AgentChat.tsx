@@ -48,6 +48,95 @@ export function AgentChat({ isOpen = true, onToggle }: AgentChatProps) {
     scrollToBottom();
   }, [messages]);
 
+  // Render markdown content with bold, lists, headers, and code blocks
+  const renderMarkdown = (content: string): React.ReactNode => {
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    // Replace **bold** with <strong>
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    let match;
+    let tempContent = content;
+
+    // Handle code blocks
+    tempContent = tempContent.replace(/```([\s\S]*?)```/g, '<CODE_BLOCK>$1</CODE_BLOCK>');
+
+    // Handle lists
+    tempContent = tempContent.replace(/^\* (.*?)$/gm, '• $1');
+
+    // Handle bold
+    tempContent = tempContent.replace(/\*\*(.*?)\*\*/g, '<BOLD>$1</BOLD>');
+
+    // Handle headers
+    tempContent = tempContent.replace(/^### (.*?)$/gm, '<HEADER3>$1</HEADER3>');
+    tempContent = tempContent.replace(/^## (.*?)$/gm, '<HEADER2>$1</HEADER2>');
+    tempContent = tempContent.replace(/^# (.*?)$/gm, '<HEADER1>$1</HEADER1>');
+
+    return (
+      <div className="whitespace-pre-wrap">
+        {tempContent.split('\n').map((line, idx) => {
+          if (line.startsWith('<HEADER1>')) {
+            return (
+              <div key={idx} className="text-lg font-bold mt-2">
+                {line.replace(/<HEADER1>(.*?)<\/HEADER1>/g, '$1')}
+              </div>
+            );
+          }
+          if (line.startsWith('<HEADER2>')) {
+            return (
+              <div key={idx} className="text-base font-bold mt-1">
+                {line.replace(/<HEADER2>(.*?)<\/HEADER2>/g, '$1')}
+              </div>
+            );
+          }
+          if (line.startsWith('<HEADER3>')) {
+            return (
+              <div key={idx} className="text-sm font-bold">
+                {line.replace(/<HEADER3>(.*?)<\/HEADER3>/g, '$1')}
+              </div>
+            );
+          }
+          if (line.includes('<CODE_BLOCK>')) {
+            const codeContent = line.replace(/<CODE_BLOCK>(.*?)<\/CODE_BLOCK>/g, '$1');
+            return (
+              <div key={idx} className="bg-gray-800 text-gray-100 p-2 rounded font-mono text-xs my-1">
+                {codeContent}
+              </div>
+            );
+          }
+
+          let displayLine = line
+            .replace(/<BOLD>(.*?)<\/BOLD>/g, '$1')
+            .replace(/• (.*?)$/gm, '• $1');
+
+          const hasBold = line.includes('<BOLD>');
+
+          return (
+            <div
+              key={idx}
+              className={hasBold ? 'font-bold' : line.startsWith('•') ? 'ml-4' : ''}
+            >
+              {displayLine}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Copy message to clipboard
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedMessageId(messages.indexOf(messages.find((m) => m.content === content)!));
+    toast.success('Mensaje copiado al portapapeles');
+    setTimeout(() => setCopiedMessageId(null), 2000);
+  };
+
+  // Handle quick action click
+  const handleQuickAction = (command: string) => {
+    setInputValue(command);
+  };
+
   const handleSend = async () => {
     if (!inputValue.trim()) {
       return;
@@ -350,5 +439,6 @@ function copyToClipboard(content: string) {
 }
 
 export default AgentChat;
+
 
 
