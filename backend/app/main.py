@@ -29,6 +29,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import api_router
 from app.core.config import settings
+from app.cron_jobs import setup_scheduler, scheduler as cron_scheduler
 
 # Configure logging
 logging.basicConfig(
@@ -240,4 +241,5 @@ if __name__ == "__main__":
         reload=True,
         log_level="info",
     )
+
 
