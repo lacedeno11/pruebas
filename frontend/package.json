@@ -1,0 +1,38 @@
+{
+  "name": "dercas-pei-frontend",
+  "version": "0.1.0",
+  "description": "DERCAS PEI Frontend - Agentic OT Management UI",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "18.x",
+    "react-dom": "18.x",
+    "@tanstack/react-query": "5.x",
+    "axios": "1.6.x",
+    "@dnd-kit/core": "6.x",
+    "@dnd-kit/sortable": "8.x",
+    "@dnd-kit/utilities": "3.x",
+    "react-leaflet": "4.x",
+    "leaflet": "1.9.x",
+    "zustand": "4.x",
+    "react-hot-toast": "2.x",
+    "lucide-react": "0.x"
+  },
+  "devDependencies": {
+    "vite": "5.x",
+    "@vitejs/plugin-react": "4.x",
+    "typescript": "5.3.x",
+    "@types/react": "18.x",
+    "@types/react-dom": "18.x",
+    "@types/leaflet": "1.9.x",
+    "tailwindcss": "3.x",
+    "autoprefixer": "10.x",
+    "postcss": "8.x"
+  }
+}
+
