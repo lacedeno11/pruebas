@@ -1,0 +1,75 @@
+# PEI Agentic Platform - Backend Dependencies
+# Python 3.13+
+# 
+# Production Core Dependencies
+# ==========================
+
+# FastAPI Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database ORM & Migrations
+sqlalchemy==2.0.23
+alembic==1.12.1
+asyncpg==0.29.0          # PostgreSQL async driver
+aiosqlite==0.19.0        # SQLite async driver
+
+# Data Validation & Settings
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Email & Async Communication
+aiosmtplib==3.0.1
+
+# LangGraph & LangChain - AI Agents
+langgraph==0.0.66
+langchain==0.1.0
+langchain-openai==0.0.2
+langchain-core==0.1.0
+
+# Background Job Scheduling
+apscheduler==3.10.4
+
+# Geographic Calculations (Optional for production)
+geopy==2.4.1
+
+# ==========================
+# Testing & Development Dependencies
+# ==========================
+
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2            # Async HTTP client for testing
+
+# ==========================
+# Optional / Future Use
+# ==========================
+
+# For advanced geographic operations (alternative to geopy)
+# shapely==2.0.2
+# geopandas==0.14.0
+
+# For monitoring and observability
+# opentelemetry-api==1.21.0
+# opentelemetry-sdk==1.21.0
+
+# For database connection pooling insights
+# sqlalchemy-utils==0.41.1
+
+# For more sophisticated caching
+# redis==5.0.1
+# aioredis==2.0.1
+
+# For message queues (future enhancement)
+# celery==5.3.4
+# kombu==5.3.4
+
+# For WebSocket support
+# websockets==12.0
+# python-socketio==5.9.0
+
