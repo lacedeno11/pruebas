@@ -1,0 +1,178 @@
+version: '3.8'
+
+# Docker Compose configuration for PEI platform development environment
+# Services: PostgreSQL database, Python FastAPI backend, React Vite frontend
+# Usage: docker-compose up -d (start services), docker-compose down (stop services)
+
+services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:15
+    container_name: pei_postgres
+    environment:
+      POSTGRES_USER: pei_user
+      POSTGRES_PASSWORD: pei_pass
+      POSTGRES_DB: pei_db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume for data persistence across container restarts
+      - pei_postgres_data:/var/lib/postgresql/data
+      # Optional: Initialize database with SQL script
+      - ./backend/alembic/versions:/docker-entrypoint-initdb.d
+    networks:
+      - pei_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pei_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Python FastAPI Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pei_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://pei_user:pei_pass@postgres:5432/pei_db
+      
+      # System Configuration
+      SYSTEM_MODE: MOCK  # MOCK or PRODUCTION
+      
+      # OpenAI API Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-test-key-replace-with-real-key}
+      
+      # Telegram Bot Configuration (optional)
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      
+      # External APIs Configuration (optional)
+      TELCOS_API_BASE_URL: ${TELCOS_API_BASE_URL:-http://localhost:8001}
+      TELCODRIVE_API_BASE_URL: ${TELCODRIVE_API_BASE_URL:-http://localhost:8002}
+      
+      # Email Configuration (optional)
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-smtp.gmail.com}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@pei.local}
+      
+      # Alert Configuration
+      ALERT_DETENTION_DAYS: "20,25,29"
+      AUTO_CANCEL_DAYS: "30"
+      PREPLANNED_ALERT_HOURS: "48"
+      PROXIMITY_RADIUS_KM: "10"
+    
+    volumes:
+      # Mount backend code for hot reload during development
+      - ./backend:/app
+      # Exclude node_modules to prevent host/container conflicts
+      - /app/__pycache__
+      - /app/.pytest_cache
+    
+    networks:
+      - pei_network
+    
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    
+    restart: unless-stopped
+
+  # React Vite Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pei_frontend
+    ports:
+      - "5173:5173"
+    
+    environment:
+      # API Configuration
+      VITE_API_URL: http://localhost:8000
+      
+      # Frontend Environment
+      NODE_ENV: development
+    
+    volumes:
+      # Mount frontend code for hot reload during development
+      - ./frontend:/app
+      # Exclude node_modules to prevent host/container conflicts
+      - /app/node_modules
+      - /app/.next
+    
+    networks:
+      - pei_network
+    
+    command: npm run dev -- --host 0.0.0.0
+    
+    restart: unless-stopped
+
+# Docker Networks
+networks:
+  pei_network:
+    driver: bridge
+    name: pei_network
+
+# Docker Volumes
+volumes:
+  pei_postgres_data:
+    driver: local
+    name: pei_postgres_data
+
+# Additional Configuration Notes:
+# 
+# Environment Variables:
+# - OPENAI_API_KEY: Required for RouterAgent and other LLM-powered agents
+# - SYSTEM_MODE: Set to MOCK for development (uses MockApiService)
+# - Set to PRODUCTION for real external API calls
+#
+# Service Dependencies:
+# - Backend depends on PostgreSQL database
+# - Frontend depends on Backend API (configured via VITE_API_URL)
+# - All services connected via pei_network bridge network
+#
+# Volumes:
+# - pei_postgres_data: Persistent PostgreSQL data storage
+# - Backend and frontend code mounted for hot reload in development
+#
+# Health Checks:
+# - PostgreSQL includes health check to ensure DB is ready before backend starts
+# - Backend uses depends_on with condition: service_healthy
+#
+# Hot Reload:
+# - Backend: uvicorn with --reload flag watches for Python file changes
+# - Frontend: Vite dev server watches for React file changes
+# - Both services restart automatically on file saves
+#
+# Access:
+# - Frontend: http://localhost:5173
+# - Backend API: http://localhost:8000
+# - PostgreSQL: localhost:5432 (from host or pei_network from containers)
+# - API Docs (Swagger): http://localhost:8000/docs
+# - API Docs (ReDoc): http://localhost:8000/redoc
+#
+# Commands:
+# - Start all services: docker-compose up -d
+# - Stop all services: docker-compose down
+# - View logs: docker-compose logs -f [service_name]
+# - Rebuild images: docker-compose build --no-cache
+# - Remove volumes: docker-compose down -v (CAUTION: deletes data)
+# - Execute command in container: docker-compose exec [service_name] [command]
+#
+# Database:
+# - First run creates tables automatically via Alembic migrations
+# - Data persists in pei_postgres_data volume between restarts
+# - To reset database: docker-compose down -v && docker-compose up -d
+#
+# Troubleshooting:
+# - Check logs: docker-compose logs -f backend
+# - Connect to DB: docker-compose exec postgres psql -U pei_user -d pei_db
+# - Rebuild without cache: docker-compose build --no-cache
+# - Force recreate containers: docker-compose up -d --force-recreate
+
