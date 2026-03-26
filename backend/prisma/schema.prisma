@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model OT {
+  id                   String   @id @default(uuid())
+  externalId           String   @unique
+  status               OTStatus @default(PREPLANIFICADA)
+  projectType          ProjectType
+  clienteName          String?
+  loginId              String?
+  lat                  Float?
+  long                 Float?
+  assignedCuadrillaId  String?
+  hasGeoError          Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  cuadrilla            Cuadrilla? @relation(fields: [assignedCuadrillaId], references: [id])
+  logs                 AgentLog[]
+  assignment           Assignment?
+
+  @@index([status])
+  @@index([projectType])
+  @@index([assignedCuadrillaId])
+}
+
+model Cuadrilla {
+  id                   String   @id @default(uuid())
+  name                 String   @unique
+  type                 CuadrillaType
+  lastCentroidLat      Float?
+  lastCentroidLong     Float?
+  dailyCapacity        Int      @default(10)
+  currentLoad          Int      @default(0)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+
+  // Relations
+  ots                  OT[]
+  assignments          Assignment[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model AgentLog {
+  id                   String   @id @default(uuid())
+  otId                 String?
+  agentName            String
+  accion               String
+  resultado            String
+  rawLlmResponse       String?
+  errorMessage         String?
+  createdAt            DateTime @default(now())
+
+  // Relations
+  ot                   OT?      @relation(fields: [otId], references: [id], onDelete: SetNull)
+
+  @@index([otId])
+  @@index([agentName])
+  @@index([createdAt])
+}
+
+model Assignment {
+  id                   String   @id @default(uuid())
+  otId                 String   @unique
+  cuadrillaId          String
+  assignedByAgent      String
+  distanceFromCentroid Float?
+  createdAt            DateTime @default(now())
+
+  // Relations
+  ot                   OT       @relation(fields: [otId], references: [id], onDelete: Cascade)
+  cuadrilla            Cuadrilla @relation(fields: [cuadrillaId], references: [id])
+
+  @@index([otId])
+  @@index([cuadrillaId])
+}
+
+enum OTStatus {
+  PREPLANIFICADA
+  PLANIFICADA
+  ASIGNADO_TAREA
+  DETENIDA
+  ANULADA
+  FINALIZADA
+}
+
+enum ProjectType {
+  PUBLICO
+  PRIVADO
+  TERCERIZADO
+}
+
+enum CuadrillaType {
+  PRINCIPAL
+  RESERVA
+}
+
